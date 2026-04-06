@@ -365,3 +365,8 @@ Lo que sigue pendiente fuera del código es la validación manual final en dos i
 - tutorial inicial;
 - efectos visuales y animaciones más avanzadas;
 - reconexión más robusta de clientes.
+
+## 23. Diagrama de clases 
+<img width="6235" height="3266" alt="Blank diagram" src="https://github.com/user-attachments/assets/8b491570-122a-43b3-99db-c1f91d3daa93" />
+
+
