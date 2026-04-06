@@ -23,6 +23,10 @@ public final class GameConfig {
 
     public static final int LEVEL_WIDTH = 1800;
     public static final int LEVEL_HEIGHT = 900;
+    public static final double ARENA_X = 0.0;
+    public static final double ARENA_Y = 0.0;
+    public static final double ARENA_W = 1800.0;
+    public static final double ARENA_H = 900.0;
     public static final double VIEWPORT_W = 980.0;
     public static final double VIEWPORT_H = 620.0;
 
