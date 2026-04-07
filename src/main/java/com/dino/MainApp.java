@@ -61,7 +61,7 @@ public class MainApp extends Application {
         primaryStage = stage;
         resetRuntimeState();
 
-        FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/dino/views/start_menu.fxml"));
+        FXMLLoader loader = new FXMLLoader(getClass().getResource("/com.dino.views/start_menu.fxml"));
         Scene scene = new Scene(loader.load(), 1280, 780);
         stage.setTitle("Threaded");
         stage.setScene(scene);

@@ -15,6 +15,14 @@ import javafx.scene.layout.HBox;
 import java.net.URL;
 import java.util.ResourceBundle;
 
+/**
+ * Controlador de la pantalla inicial.
+ *
+ * <p>Recoge los datos básicos de red y del jugador, decide si la instancia
+ * actuará como host o cliente y delega la creación o unión de la sesión a los
+ * casos de uso de aplicación. Después abre la vista de lobby con los servicios
+ * ya inicializados.</p>
+ */
 public class StartMenuController implements Initializable {
     @FXML private TextField playerNameField;
     @FXML private RadioButton createRadio;
@@ -45,6 +53,9 @@ public class StartMenuController implements Initializable {
     }
 
     @FXML
+    /**
+     * Valida el formulario inicial y abre el lobby de la sesión creada/unida.
+     */
     public void onAbrirLobby() {
         errorLabel.setVisible(false);
         String name = playerNameField.getText().trim();
@@ -76,7 +87,7 @@ public class StartMenuController implements Initializable {
             }
 
             MainApp.udpPeer = udpPeer;
-            FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/dino/views/lobby.fxml"));
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/com.dino.views/lobby.fxml"));
             Scene scene = new Scene(loader.load(), 1280, 780);
             MainApp.getStage().setScene(scene);
         } catch (Exception e) {

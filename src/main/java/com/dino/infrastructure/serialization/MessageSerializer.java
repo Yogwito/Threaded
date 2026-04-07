@@ -22,7 +22,8 @@ public class MessageSerializer {
     public static final String READY          = "READY";
     public static final String LOBBY_SNAPSHOT = "LOBBY_SNAPSHOT";
     public static final String START_GAME     = "START_GAME";
-    public static final String INPUT          = "INPUT";
+    public static final String MOVE_TARGET    = "MOVE_TARGET";
+    public static final String JUMP           = "JUMP";
     public static final String SNAPSHOT       = "SNAPSHOT";
     public static final String GAME_EVENT     = "GAME_EVENT";
     public static final String HEARTBEAT      = "HEARTBEAT";

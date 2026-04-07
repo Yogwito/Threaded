@@ -1,7 +1,6 @@
 package com.dino.presentation.controllers;
 
 import com.dino.MainApp;
-import com.dino.config.GameConfig;
 import com.dino.domain.entities.Player;
 import javafx.beans.property.SimpleIntegerProperty;
 import javafx.beans.property.SimpleStringProperty;
@@ -18,6 +17,14 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.ResourceBundle;
 
+/**
+ * Controlador de la pantalla final de resultados.
+ *
+ * <p>Toma el estado final replicado de la sesión, construye una tabla ordenada
+ * por puntaje y muestra el ganador junto al tiempo total de campaña. Desde esta
+ * vista también se reinicia el runtime compartido para volver al menú
+ * principal.</p>
+ */
 public class GameOverController implements Initializable {
     @FXML private TableView<Player> resultsTable;
     @FXML private TableColumn<Player, String> posColumn;
@@ -48,14 +55,17 @@ public class GameOverController implements Initializable {
                 : "Ganador: " + sorted.get(0).getName() + " (" + sorted.get(0).getScore() + " masa)");
         }
 
-        totalTimeLabel.setText("Duración: " + GameConfig.GAME_DURATION_SECONDS + "s");
+        totalTimeLabel.setText(String.format("Duración: %.1fs", MainApp.sessionService.getElapsedTime()));
     }
 
     @FXML
+    /**
+     * Limpia el estado global de la aplicación y regresa al menú inicial.
+     */
     public void onVolverAlMenu() {
         MainApp.resetRuntimeState();
         try {
-            FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/dino/views/start_menu.fxml"));
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/com.dino.views/start_menu.fxml"));
             Scene scene = new Scene(loader.load(), 1280, 780);
             MainApp.getStage().setScene(scene);
         } catch (Exception e) {

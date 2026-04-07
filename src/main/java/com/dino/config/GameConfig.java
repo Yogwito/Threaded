@@ -33,6 +33,7 @@ public final class GameConfig {
     public static final double MOVE_ACCELERATION = 1850.0;
     public static final double AIR_MOVE_ACCELERATION = 1100.0;
     public static final double MOVE_FRICTION = 2200.0;
+    public static final double JUMP_FORCE = -560.0;
     public static final double JUMP_VELOCITY = -560.0;
     public static final double GRAVITY = 1480.0;
     public static final double COYOTE_TIME_SECONDS = 0.11;
@@ -50,7 +51,6 @@ public final class GameConfig {
     public static final double PLAYER_COLLISION_VELOCITY_DAMPING = 0.72;
     public static final double PLAYER_COLLISION_CARRY_RATIO = 0.35;
     public static final double TARGET_REACHED_TOLERANCE = 8.0;
-    public static final double MOUSE_JUMP_VERTICAL_THRESHOLD = 55.0;
     public static final double CLIENT_INPUT_RESEND_SECONDS = 0.033;
     public static final double CLIENT_HEARTBEAT_SECONDS = 0.35;
     public static final double HOST_PEER_TIMEOUT_SECONDS = 2.4;

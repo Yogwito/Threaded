@@ -1,5 +1,9 @@
 package com.dino.application.services;
 
+import com.dino.application.levels.Box;
+import com.dino.application.levels.LevelData;
+import com.dino.application.levels.LevelLoader;
+import com.dino.application.levels.Platform;
 import com.dino.config.GameConfig;
 import com.dino.domain.entities.ButtonSwitch;
 import com.dino.domain.entities.CollectibleItem;
@@ -51,7 +55,7 @@ public class HostMatchService {
      */
     public void initWorld() {
         sessionService.setCurrentLevelIndex(0);
-        sessionService.setTotalLevels(GameConfig.TOTAL_LEVELS);
+        sessionService.setTotalLevels(Math.max(1, LevelLoader.countAvailableLevels()));
         sessionService.setElapsedTime(0);
         sessionService.setGameRunning(true);
         sessionService.setRoomResetCount(0);
@@ -64,17 +68,32 @@ public class HostMatchService {
     }
 
     /**
-     * Registra el último objetivo horizontal y la intención de salto de un jugador.
+     * Registra el último objetivo de movimiento apuntado por un jugador.
      *
      * @param playerId identificador del jugador
-     * @param targetX objetivo horizontal en coordenadas de mundo
-     * @param jumpPressed indica si el jugador solicitó salto
+     * @param targetX coordenada X del mouse en mundo
+     * @param targetY coordenada Y del mouse en mundo
      */
-    public void handleInput(String playerId, double targetX, boolean jumpPressed) {
+    public void handleMoveTarget(String playerId, double targetX, double targetY) {
         InputState state = playerInputs.computeIfAbsent(playerId, ignored -> new InputState());
         state.targetX = targetX;
+        state.targetY = targetY;
         state.hasTarget = true;
-        if (jumpPressed) state.jumpQueued = true;
+        Player player = sessionService.getPlayers().get(playerId);
+        if (player != null) {
+            player.setTargetX(targetX);
+            player.setTargetY(targetY);
+        }
+    }
+
+    /**
+     * Encola un salto discreto para el siguiente tick del host.
+     *
+     * @param playerId identificador del jugador
+     */
+    public void handleJump(String playerId) {
+        InputState state = playerInputs.computeIfAbsent(playerId, ignored -> new InputState());
+        state.jumpQueued = true;
     }
 
     /**
@@ -115,6 +134,14 @@ public class HostMatchService {
                 resetRoom("Caida al vacio");
                 return;
             }
+            if (player.isConnected() && player.isAlive() && isTouchingHazard(player)) {
+                player.setAlive(false);
+                player.setDeaths(player.getDeaths() + 1);
+                awardScore(player, -GameConfig.SCORE_FALL_PENALTY, "toco un hazard");
+                eventBus.publish(EventNames.PLAYER_DIED, Map.of("playerId", player.getId()));
+                resetRoom("Hazard");
+                return;
+            }
         }
 
         if (GameRules.allConnectedPlayersAtExit(players)) {
@@ -140,9 +167,10 @@ public class HostMatchService {
             if (Math.abs(dx) > GameConfig.TARGET_REACHED_TOLERANCE) {
                 moveDirection = Math.signum(dx);
             } else {
-                input.hasTarget = false;
+                moveDirection = 0;
             }
             player.setTargetX(input.targetX);
+            player.setTargetY(input.targetY);
         }
         double targetVelocity = moveDirection * GameConfig.MOVE_SPEED;
         double velocityDelta = targetVelocity - player.getVx();
@@ -170,8 +198,8 @@ public class HostMatchService {
             input.jumpBufferTimer = Math.max(0, input.jumpBufferTimer - dt);
         }
 
-        if (input.jumpBufferTimer > 0 && (player.isGrounded() || player.getCoyoteTimer() > 0)) {
-            player.setVy(GameConfig.JUMP_VELOCITY);
+        if (input.jumpBufferTimer > 0 && player.isGrounded()) {
+            player.setVy(GameConfig.JUMP_FORCE);
             player.setGrounded(false);
             player.setCoyoteTimer(0);
             input.jumpBufferTimer = 0;
@@ -188,7 +216,7 @@ public class HostMatchService {
         resolveVerticalCollisions(player);
 
         if (input.jumpBufferTimer > 0 && player.isGrounded()) {
-            player.setVy(GameConfig.JUMP_VELOCITY);
+            player.setVy(GameConfig.JUMP_FORCE);
             player.setGrounded(false);
             player.setCoyoteTimer(0);
             input.jumpBufferTimer = 0;
@@ -619,17 +647,14 @@ public class HostMatchService {
     private void loadLevel(int levelIndex, boolean resetScores) {
         sessionService.setCurrentLevelIndex(levelIndex);
         sessionService.getPlatforms().clear();
+        sessionService.getSpecialPlatforms().clear();
+        sessionService.getHazards().clear();
+        sessionService.getCheckpoints().clear();
         sessionService.getSpawnPoints().clear();
         sessionService.getPushBlocks().clear();
         sessionService.getCoins().clear();
-
-        switch (levelIndex) {
-            case 0 -> loadLevelOne();
-            case 1 -> loadLevelTwo();
-            case 2 -> loadLevelThree();
-            case 3 -> loadLevelFour();
-            default -> loadLevelFive();
-        }
+        LevelData levelData = LevelLoader.loadLevel(levelIndex + 1);
+        applyLevelData(levelData, levelIndex);
 
         if (resetScores) {
             for (Player player : sessionService.getPlayers().values()) {
@@ -641,110 +666,78 @@ public class HostMatchService {
         resetRoomState();
     }
 
-    private void loadLevelOne() {
-        // Tutorial: one clear 200px gap near the start, then safe 30px transitions, gentle 38px rise per step
-        sessionService.getPlatforms().add(new PlatformTile("spawn_p",  80,   750, 240, 24));
-        // GAP 200px (320→520) — teaches falling
-        sessionService.getPlatforms().add(new PlatformTile("step_a",   520,  712, 220, 24));
-        sessionService.getPlatforms().add(new PlatformTile("step_b",   770,  674, 240, 24)); // button here
-        sessionService.getPlatforms().add(new PlatformTile("step_c",   1040, 636, 230, 24));
-        sessionService.getPlatforms().add(new PlatformTile("door_p",   1300, 598, 220, 24));
-        sessionService.getPlatforms().add(new PlatformTile("exit_p",   1550, 560, 200, 24));
+    private void applyLevelData(LevelData levelData, int levelIndex) {
+        sessionService.setCurrentLevelIndex(levelIndex);
+        sessionService.setCurrentLevelName(levelData.getName());
+        sessionService.setCurrentBackground(levelData.getBackground());
+        sessionService.setCurrentTileSize(levelData.getTileSize());
 
-        addDefaultSpawns(100, 698); // 750 - 52
-        sessionService.setButtonSwitch(new ButtonSwitch("button", 850, 658, GameConfig.BUTTON_WIDTH, GameConfig.BUTTON_HEIGHT));
-        sessionService.setDoor(new Door("door", 1370, 450, GameConfig.DOOR_WIDTH, GameConfig.DOOR_HEIGHT));
-        sessionService.setExitZone(new ExitZone(1560, 450, GameConfig.EXIT_WIDTH, GameConfig.EXIT_HEIGHT));
-        sessionService.getPushBlocks().add(new PushBlock("l1_box", 330, 682, GameConfig.PUSH_BLOCK_WIDTH, GameConfig.PUSH_BLOCK_HEIGHT));
-        // coins: platform_y - 20  (16px coin + 4px gap above platform top)
-        sessionService.getCoins().add(new CollectibleItem("l1_c1", 622, 692, GameConfig.SCORE_COIN_SMALL));  // step_a
-        sessionService.getCoins().add(new CollectibleItem("l1_c2", 790, 654, GameConfig.SCORE_COIN_SMALL));  // step_b (left of button)
-        sessionService.getCoins().add(new CollectibleItem("l1_c3", 1147, 616, GameConfig.SCORE_COIN_SMALL)); // step_c
-        sessionService.getCoins().add(new CollectibleItem("l1_c4", 1602, 540, GameConfig.SCORE_COIN_LARGE)); // exit_p, gold
+        int index = 0;
+        for (Platform platform : levelData.getPlatforms()) {
+            sessionService.getPlatforms().add(toPlatformTile("platform_" + index++, platform));
+        }
+
+        int specialIndex = 0;
+        for (Platform platform : levelData.getSpecialPlatforms()) {
+            PlatformTile tile = toPlatformTile("special_" + specialIndex++, platform);
+            sessionService.getPlatforms().add(tile);
+            sessionService.getSpecialPlatforms().add(new PlatformTile(tile.getId(), tile.getX(), tile.getY(), tile.getWidth(), tile.getHeight()));
+        }
+
+        int hazardIndex = 0;
+        for (Platform hazard : levelData.getHazards()) {
+            sessionService.getHazards().add(toPlatformTile("hazard_" + hazardIndex++, hazard));
+        }
+
+        int checkpointIndex = 0;
+        for (Platform checkpoint : levelData.getCheckpoints()) {
+            sessionService.getCheckpoints().add(toPlatformTile("checkpoint_" + checkpointIndex++, checkpoint));
+        }
+
+        for (double[] spawn : levelData.getSpawnPoints()) {
+            sessionService.getSpawnPoints().add(new double[]{spawn[0], spawn[1]});
+        }
+
+        int boxIndex = 0;
+        for (Box box : levelData.getBoxes()) {
+            PushBlock pushBlock = new PushBlock("box_" + boxIndex++, box.getX(), box.getY(), box.getWidth(), box.getHeight());
+            pushBlock.setHomeX(box.getX());
+            pushBlock.setHomeY(box.getY());
+            sessionService.getPushBlocks().add(pushBlock);
+        }
+
+        sessionService.setButtonSwitch(null);
+        sessionService.setDoor(null);
+        sessionService.setExitZone(createExitZone(levelData.getGoals()));
     }
 
-    private void loadLevelTwo() {
-        // Zigzag mas amable: huecos mas cortos y plataformas de recepcion mas anchas.
-        sessionService.getPlatforms().add(new PlatformTile("spawn_p",   80,   720, 220, 24));
-        sessionService.getPlatforms().add(new PlatformTile("drop_a",    470,  748, 190, 24));
-        sessionService.getPlatforms().add(new PlatformTile("rise_b",    680,  698, 180, 24));
-        sessionService.getPlatforms().add(new PlatformTile("mid_c",     990,  648, 180, 24));
-        sessionService.getPlatforms().add(new PlatformTile("button_p",  1190, 592, 145, 24));
-        sessionService.getPlatforms().add(new PlatformTile("door_p",    1400, 632, 210, 24));
-        sessionService.getPlatforms().add(new PlatformTile("exit_p",    1630, 600, 160, 24));
-
-        addDefaultSpawns(100, 668); // 720 - 52
-        sessionService.setButtonSwitch(new ButtonSwitch("button", 1230, 576, GameConfig.BUTTON_WIDTH, GameConfig.BUTTON_HEIGHT));
-        sessionService.setDoor(new Door("door", 1470, 484, GameConfig.DOOR_WIDTH, GameConfig.DOOR_HEIGHT));
-        sessionService.setExitZone(new ExitZone(1650, 490, GameConfig.EXIT_WIDTH, GameConfig.EXIT_HEIGHT));
-        sessionService.getCoins().add(new CollectibleItem("l2_c1", 548, 728, GameConfig.SCORE_COIN_SMALL));
-        sessionService.getCoins().add(new CollectibleItem("l2_c2", 760, 678, GameConfig.SCORE_COIN_SMALL));
-        sessionService.getCoins().add(new CollectibleItem("l2_c3", 1080, 626, GameConfig.SCORE_COIN_SMALL));
-        sessionService.getCoins().add(new CollectibleItem("l2_c4", 1698, 580, GameConfig.SCORE_COIN_LARGE));
+    private ExitZone createExitZone(List<Platform> goals) {
+        if (goals.isEmpty()) return new ExitZone(0, 0, GameConfig.EXIT_WIDTH, GameConfig.EXIT_HEIGHT);
+        double minX = Double.MAX_VALUE;
+        double minY = Double.MAX_VALUE;
+        double maxX = Double.NEGATIVE_INFINITY;
+        double maxY = Double.NEGATIVE_INFINITY;
+        for (Platform goal : goals) {
+            minX = Math.min(minX, goal.getX());
+            minY = Math.min(minY, goal.getY());
+            maxX = Math.max(maxX, goal.getX() + goal.getWidth());
+            maxY = Math.max(maxY, goal.getY() + goal.getHeight());
+        }
+        return new ExitZone(minX, minY, maxX - minX, maxY - minY);
     }
 
-    private void loadLevelThree() {
-        // Nivel 3 un poco mas amable: mas continuidad horizontal y recepciones mas amplias.
-        sessionService.getPlatforms().add(new PlatformTile("spawn_p",   80,   710, 220, 24));
-        sessionService.getPlatforms().add(new PlatformTile("stone_a",   340,  680, 185, 24));
-        sessionService.getPlatforms().add(new PlatformTile("button_p",  575,  638, 210, 24));
-        sessionService.getPlatforms().add(new PlatformTile("stone_b",   835,  614, 200, 24));
-        sessionService.getPlatforms().add(new PlatformTile("door_p",    1085, 584, 235, 24));
-        sessionService.getPlatforms().add(new PlatformTile("exit_p",    1360, 560, 255, 24));
-
-        addDefaultSpawns(100, 658);
-        sessionService.setButtonSwitch(new ButtonSwitch("button", 652, 622, GameConfig.BUTTON_WIDTH, GameConfig.BUTTON_HEIGHT));
-        sessionService.setDoor(new Door("door", 1170, 436, GameConfig.DOOR_WIDTH, GameConfig.DOOR_HEIGHT));
-        sessionService.setExitZone(new ExitZone(1435, 450, GameConfig.EXIT_WIDTH, GameConfig.EXIT_HEIGHT));
-        sessionService.getPushBlocks().add(new PushBlock("l3_box", 995, 546, GameConfig.PUSH_BLOCK_WIDTH, GameConfig.PUSH_BLOCK_HEIGHT));
-        sessionService.getCoins().add(new CollectibleItem("l3_c1", 425, 660, GameConfig.SCORE_COIN_SMALL));
-        sessionService.getCoins().add(new CollectibleItem("l3_c2", 668, 618, GameConfig.SCORE_COIN_SMALL));
-        sessionService.getCoins().add(new CollectibleItem("l3_c3", 935, 594, GameConfig.SCORE_COIN_SMALL));
-        sessionService.getCoins().add(new CollectibleItem("l3_c4", 1195, 564, GameConfig.SCORE_COIN_LARGE));
-        sessionService.getCoins().add(new CollectibleItem("l3_c5", 1508, 540, GameConfig.SCORE_COIN_SMALL));
+    private PlatformTile toPlatformTile(String id, Platform platform) {
+        return new PlatformTile(id, platform.getX(), platform.getY(), platform.getWidth(), platform.getHeight());
     }
 
-    private void loadLevelFour() {
-        // Sala amplia para 4 jugadores: mismas ideas pero con mas espacio de reunion y menos hueco final.
-        sessionService.getPlatforms().add(new PlatformTile("spawn_p",   80,   720, 320, 24));
-        sessionService.getPlatforms().add(new PlatformTile("group_a",   430,  688, 370, 24));
-        sessionService.getPlatforms().add(new PlatformTile("button_p",  845,  648, 340, 24));
-        sessionService.getPlatforms().add(new PlatformTile("group_b",   1230, 615, 345, 24));
-        sessionService.getPlatforms().add(new PlatformTile("exit_p",    1580, 582, 220, 24));
-
-        addDefaultSpawns(120, 668);
-        sessionService.setButtonSwitch(new ButtonSwitch("button", 985, 632, GameConfig.BUTTON_WIDTH, GameConfig.BUTTON_HEIGHT));
-        sessionService.setDoor(new Door("door", 1480, 468, GameConfig.DOOR_WIDTH, GameConfig.DOOR_HEIGHT));
-        sessionService.setExitZone(new ExitZone(1620, 470, 165, GameConfig.EXIT_HEIGHT));
-        sessionService.getCoins().add(new CollectibleItem("l4_c1", 555, 668, GameConfig.SCORE_COIN_SMALL));
-        sessionService.getCoins().add(new CollectibleItem("l4_c2", 1010, 628, GameConfig.SCORE_COIN_SMALL));
-        sessionService.getCoins().add(new CollectibleItem("l4_c3", 1375, 595, GameConfig.SCORE_COIN_SMALL));
-        sessionService.getCoins().add(new CollectibleItem("l4_c4", 1685, 562, GameConfig.SCORE_COIN_LARGE));
-    }
-
-    private void loadLevelFive() {
-        // Final ligeramente suavizado: puente mas ancho y zonas finales mas seguras.
-        sessionService.getPlatforms().add(new PlatformTile("spawn_p",   90,   720, 340, 24));
-        sessionService.getPlatforms().add(new PlatformTile("group_a",   485,  692, 380, 24));
-        sessionService.getPlatforms().add(new PlatformTile("bridge",    940,  652, 285, 24));
-        sessionService.getPlatforms().add(new PlatformTile("button_p",  1250, 618, 340, 24));
-        sessionService.getPlatforms().add(new PlatformTile("group_b",   1485, 582, 330, 24));
-
-        addDefaultSpawns(130, 668);
-        sessionService.setButtonSwitch(new ButtonSwitch("button", 1395, 602, GameConfig.BUTTON_WIDTH, GameConfig.BUTTON_HEIGHT));
-        sessionService.setDoor(new Door("door", 1675, 435, GameConfig.DOOR_WIDTH, GameConfig.DOOR_HEIGHT));
-        sessionService.setExitZone(new ExitZone(1545, 470, 235, GameConfig.EXIT_HEIGHT));
-        sessionService.getCoins().add(new CollectibleItem("l5_c1", 630, 672, GameConfig.SCORE_COIN_SMALL));
-        sessionService.getCoins().add(new CollectibleItem("l5_c2", 1080, 632, GameConfig.SCORE_COIN_SMALL));
-        sessionService.getCoins().add(new CollectibleItem("l5_c3", 1405, 598, GameConfig.SCORE_COIN_SMALL));
-        sessionService.getCoins().add(new CollectibleItem("l5_c4", 1615, 562, GameConfig.SCORE_COIN_LARGE));
-    }
-
-    private void addDefaultSpawns(double baseX, double baseY) {
-        sessionService.getSpawnPoints().add(new double[]{baseX, baseY});
-        sessionService.getSpawnPoints().add(new double[]{baseX + 60, baseY});
-        sessionService.getSpawnPoints().add(new double[]{baseX + 120, baseY});
-        sessionService.getSpawnPoints().add(new double[]{baseX + 180, baseY});
+    private boolean isTouchingHazard(Player player) {
+        for (PlatformTile hazard : sessionService.getHazards()) {
+            if (GameRules.intersects(player.getX(), player.getY(), player.getWidth(), player.getHeight(),
+                hazard.getX(), hazard.getY(), hazard.getWidth(), hazard.getHeight())) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private void resetRoomState() {
@@ -763,6 +756,7 @@ public class HostMatchService {
             player.setAtExit(false);
             player.setFinishOrder(0);
             player.setTargetX(spawn[0] + player.getWidth() / 2.0);
+            player.setTargetY(spawn[1] + player.getHeight() / 2.0);
             index++;
         }
         if (sessionService.getButtonSwitch() != null) sessionService.getButtonSwitch().setPressed(false);
@@ -820,6 +814,7 @@ public class HostMatchService {
 
     private static final class InputState {
         double targetX;
+        double targetY;
         boolean hasTarget;
         boolean jumpQueued;
         double jumpBufferTimer;

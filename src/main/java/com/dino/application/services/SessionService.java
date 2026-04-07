@@ -35,6 +35,9 @@ public class SessionService {
     private final Map<String, Player> players = new LinkedHashMap<>();
     private final Map<String, InetSocketAddress> peerAddresses = new LinkedHashMap<>();
     private final List<PlatformTile> platforms = new ArrayList<>();
+    private final List<PlatformTile> specialPlatforms = new ArrayList<>();
+    private final List<PlatformTile> hazards = new ArrayList<>();
+    private final List<PlatformTile> checkpoints = new ArrayList<>();
     private final List<double[]> spawnPoints = new ArrayList<>();
     private ButtonSwitch buttonSwitch;
     private Door door;
@@ -50,6 +53,9 @@ public class SessionService {
     private long nextSnapshotSeq = 0;
     private final List<CollectibleItem> coins = new ArrayList<>();
     private final Map<String, Long> peerLastSeenMillis = new LinkedHashMap<>();
+    private String currentLevelName = "";
+    private String currentBackground = "default";
+    private int currentTileSize = 64;
 
     /**
      * Crea un contenedor de sesión asociado al bus de eventos global.
@@ -99,6 +105,9 @@ public class SessionService {
         if (data.containsKey("roomResetReason")) roomResetReason = String.valueOf(data.get("roomResetReason"));
         if (data.containsKey("currentLevelIndex")) currentLevelIndex = ((Number) data.get("currentLevelIndex")).intValue();
         if (data.containsKey("totalLevels")) totalLevels = ((Number) data.get("totalLevels")).intValue();
+        if (data.containsKey("currentLevelName")) currentLevelName = String.valueOf(data.get("currentLevelName"));
+        if (data.containsKey("currentBackground")) currentBackground = String.valueOf(data.get("currentBackground"));
+        if (data.containsKey("currentTileSize")) currentTileSize = ((Number) data.get("currentTileSize")).intValue();
 
         if (data.containsKey("players")) {
             Set<String> snapshotPlayerIds = new HashSet<>();
@@ -118,6 +127,7 @@ public class SessionService {
                 p.setAlive((Boolean) pd.getOrDefault("alive", true));
                 p.setAtExit((Boolean) pd.getOrDefault("atExit", false));
                 p.setTargetX(((Number) pd.getOrDefault("targetX", p.getX())).doubleValue());
+                p.setTargetY(((Number) pd.getOrDefault("targetY", p.getY())).doubleValue());
                 p.setScore(((Number) pd.getOrDefault("score", 0)).intValue());
                 p.setDeaths(((Number) pd.getOrDefault("deaths", 0)).intValue());
                 p.setFinishOrder(((Number) pd.getOrDefault("finishOrder", 0)).intValue());
@@ -141,6 +151,27 @@ public class SessionService {
             }
         }
 
+        if (data.containsKey("specialPlatforms")) {
+            specialPlatforms.clear();
+            for (Map<String, Object> raw : (List<Map<String, Object>>) data.get("specialPlatforms")) {
+                specialPlatforms.add(readPlatformTile(raw));
+            }
+        }
+
+        if (data.containsKey("hazards")) {
+            hazards.clear();
+            for (Map<String, Object> raw : (List<Map<String, Object>>) data.get("hazards")) {
+                hazards.add(readPlatformTile(raw));
+            }
+        }
+
+        if (data.containsKey("checkpoints")) {
+            checkpoints.clear();
+            for (Map<String, Object> raw : (List<Map<String, Object>>) data.get("checkpoints")) {
+                checkpoints.add(readPlatformTile(raw));
+            }
+        }
+
         if (data.containsKey("spawnPoints")) {
             spawnPoints.clear();
             for (Map<String, Object> raw : (List<Map<String, Object>>) data.get("spawnPoints")) {
@@ -161,6 +192,8 @@ public class SessionService {
             button.setHeight(((Number) raw.get("height")).doubleValue());
             button.setPressed((Boolean) raw.getOrDefault("pressed", false));
             buttonSwitch = button;
+        } else {
+            buttonSwitch = null;
         }
 
         if (data.containsKey("door")) {
@@ -173,6 +206,8 @@ public class SessionService {
             value.setHeight(((Number) raw.get("height")).doubleValue());
             value.setOpen((Boolean) raw.getOrDefault("open", false));
             door = value;
+        } else {
+            door = null;
         }
 
         if (data.containsKey("exitZone")) {
@@ -183,6 +218,8 @@ public class SessionService {
             value.setWidth(((Number) raw.get("width")).doubleValue());
             value.setHeight(((Number) raw.get("height")).doubleValue());
             exitZone = value;
+        } else {
+            exitZone = null;
         }
 
         if (data.containsKey("pushBlocks")) {
@@ -238,6 +275,9 @@ public class SessionService {
         snapshot.put("roomResetReason", roomResetReason);
         snapshot.put("currentLevelIndex", currentLevelIndex);
         snapshot.put("totalLevels", totalLevels);
+        snapshot.put("currentLevelName", currentLevelName);
+        snapshot.put("currentBackground", currentBackground);
+        snapshot.put("currentTileSize", currentTileSize);
 
         List<Map<String, Object>> playerList = new ArrayList<>();
         for (Player p : players.values()) {
@@ -254,6 +294,7 @@ public class SessionService {
             pd.put("alive", p.isAlive());
             pd.put("atExit", p.isAtExit());
             pd.put("targetX", p.getTargetX());
+            pd.put("targetY", p.getTargetY());
             pd.put("score", p.getScore());
             pd.put("deaths", p.getDeaths());
             pd.put("finishOrder", p.getFinishOrder());
@@ -274,6 +315,24 @@ public class SessionService {
             platformList.add(raw);
         }
         snapshot.put("platforms", platformList);
+
+        List<Map<String, Object>> specialPlatformList = new ArrayList<>();
+        for (PlatformTile platform : specialPlatforms) {
+            specialPlatformList.add(writePlatformTile(platform));
+        }
+        snapshot.put("specialPlatforms", specialPlatformList);
+
+        List<Map<String, Object>> hazardList = new ArrayList<>();
+        for (PlatformTile hazard : hazards) {
+            hazardList.add(writePlatformTile(hazard));
+        }
+        snapshot.put("hazards", hazardList);
+
+        List<Map<String, Object>> checkpointList = new ArrayList<>();
+        for (PlatformTile checkpoint : checkpoints) {
+            checkpointList.add(writePlatformTile(checkpoint));
+        }
+        snapshot.put("checkpoints", checkpointList);
 
         List<Map<String, Object>> spawnList = new ArrayList<>();
         for (double[] spawn : spawnPoints) {
@@ -371,6 +430,9 @@ public class SessionService {
         players.clear();
         peerAddresses.clear();
         platforms.clear();
+        specialPlatforms.clear();
+        hazards.clear();
+        checkpoints.clear();
         spawnPoints.clear();
         pushBlocks.clear();
         coins.clear();
@@ -383,6 +445,9 @@ public class SessionService {
         totalLevels = 0;
         elapsedTime = 0;
         gameRunning = false;
+        currentLevelName = "";
+        currentBackground = "default";
+        currentTileSize = 64;
         lastSnapshotSeq = -1;
         nextSnapshotSeq = 0;
         localPlayerId = null;
@@ -503,6 +568,7 @@ public class SessionService {
             copy.setAlive(player.isAlive());
             copy.setAtExit(player.isAtExit());
             copy.setTargetX(player.getTargetX());
+            copy.setTargetY(player.getTargetY());
             copy.setScore(player.getScore());
             copy.setDeaths(player.getDeaths());
             copy.setFinishOrder(player.getFinishOrder());
@@ -530,6 +596,39 @@ public class SessionService {
     public synchronized List<double[]> getSpawnPointsSnapshot() {
         List<double[]> snapshot = new ArrayList<>();
         for (double[] spawn : spawnPoints) snapshot.add(new double[]{spawn[0], spawn[1]});
+        return snapshot;
+    }
+
+    /**
+     * Retorna una copia defensiva de las plataformas especiales.
+     */
+    public synchronized List<PlatformTile> getSpecialPlatformsSnapshot() {
+        List<PlatformTile> snapshot = new ArrayList<>();
+        for (PlatformTile platform : specialPlatforms) {
+            snapshot.add(new PlatformTile(platform.getId(), platform.getX(), platform.getY(), platform.getWidth(), platform.getHeight()));
+        }
+        return snapshot;
+    }
+
+    /**
+     * Retorna una copia defensiva de los hazards.
+     */
+    public synchronized List<PlatformTile> getHazardsSnapshot() {
+        List<PlatformTile> snapshot = new ArrayList<>();
+        for (PlatformTile hazard : hazards) {
+            snapshot.add(new PlatformTile(hazard.getId(), hazard.getX(), hazard.getY(), hazard.getWidth(), hazard.getHeight()));
+        }
+        return snapshot;
+    }
+
+    /**
+     * Retorna una copia defensiva de los checkpoints.
+     */
+    public synchronized List<PlatformTile> getCheckpointsSnapshot() {
+        List<PlatformTile> snapshot = new ArrayList<>();
+        for (PlatformTile checkpoint : checkpoints) {
+            snapshot.add(new PlatformTile(checkpoint.getId(), checkpoint.getX(), checkpoint.getY(), checkpoint.getWidth(), checkpoint.getHeight()));
+        }
         return snapshot;
     }
 
@@ -595,6 +694,9 @@ public class SessionService {
     public void setExpectedPlayers(int v) { this.expectedPlayers = v; }
     public Map<String, Player> getPlayers() { return players; }
     public List<PlatformTile> getPlatforms() { return platforms; }
+    public List<PlatformTile> getSpecialPlatforms() { return specialPlatforms; }
+    public List<PlatformTile> getHazards() { return hazards; }
+    public List<PlatformTile> getCheckpoints() { return checkpoints; }
     public List<double[]> getSpawnPoints() { return spawnPoints; }
     public ButtonSwitch getButtonSwitch() { return buttonSwitch; }
     public void setButtonSwitch(ButtonSwitch buttonSwitch) { this.buttonSwitch = buttonSwitch; }
@@ -615,4 +717,30 @@ public class SessionService {
     public synchronized void setElapsedTime(double elapsedTime) { this.elapsedTime = elapsedTime; }
     public synchronized boolean isGameRunning() { return gameRunning; }
     public synchronized void setGameRunning(boolean gameRunning) { this.gameRunning = gameRunning; }
+    public synchronized String getCurrentLevelName() { return currentLevelName; }
+    public synchronized void setCurrentLevelName(String currentLevelName) { this.currentLevelName = currentLevelName; }
+    public synchronized String getCurrentBackground() { return currentBackground; }
+    public synchronized void setCurrentBackground(String currentBackground) { this.currentBackground = currentBackground; }
+    public synchronized int getCurrentTileSize() { return currentTileSize; }
+    public synchronized void setCurrentTileSize(int currentTileSize) { this.currentTileSize = currentTileSize; }
+
+    private static PlatformTile readPlatformTile(Map<String, Object> raw) {
+        PlatformTile tile = new PlatformTile();
+        tile.setId((String) raw.get("id"));
+        tile.setX(((Number) raw.get("x")).doubleValue());
+        tile.setY(((Number) raw.get("y")).doubleValue());
+        tile.setWidth(((Number) raw.get("width")).doubleValue());
+        tile.setHeight(((Number) raw.get("height")).doubleValue());
+        return tile;
+    }
+
+    private static Map<String, Object> writePlatformTile(PlatformTile tile) {
+        Map<String, Object> raw = new HashMap<>();
+        raw.put("id", tile.getId());
+        raw.put("x", tile.getX());
+        raw.put("y", tile.getY());
+        raw.put("width", tile.getWidth());
+        raw.put("height", tile.getHeight());
+        return raw;
+    }
 }

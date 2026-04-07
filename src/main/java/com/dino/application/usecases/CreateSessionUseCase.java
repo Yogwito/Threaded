@@ -54,7 +54,7 @@ public class CreateSessionUseCase {
         sessionService.setPlayerName(playerName);
         sessionService.setExpectedPlayers(expectedPlayers);
 
-        Player host = new Player(playerId, playerName, "red");
+        Player host = new Player(playerId, playerName, "pride");
         host.setX(200); host.setY(200);
         sessionService.addPlayer(host);
         sessionService.registerPeerAddress(playerId, new InetSocketAddress(localIp, localPort));

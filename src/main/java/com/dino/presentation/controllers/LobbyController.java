@@ -23,6 +23,14 @@ import java.util.ResourceBundle;
 import java.util.Timer;
 import java.util.TimerTask;
 
+/**
+ * Controlador de la sala de espera previa a la partida.
+ *
+ * <p>Sincroniza la lista de jugadores, procesa mensajes básicos de lobby y
+ * permite marcar estado de listo o arrancar la simulación cuando la instancia
+ * local es host. También actúa como puente temporal entre la capa de red UDP y
+ * la transición hacia la escena principal del juego.</p>
+ */
 public class LobbyController implements Initializable {
     @FXML private ListView<String> playersList;
     @FXML private Button startBtn;
@@ -56,6 +64,9 @@ public class LobbyController implements Initializable {
     }
 
     @FXML
+    /**
+     * Marca al jugador local como listo y propaga el cambio al resto de peers.
+     */
     public void onListo() {
         if (MainApp.sessionService.isHost()) {
             MainApp.sessionService.markPlayerReady(MainApp.sessionService.getLocalPlayerId(), true);
@@ -77,6 +88,9 @@ public class LobbyController implements Initializable {
     }
 
     @FXML
+    /**
+     * Inicia la simulación autoritativa del host y abre la escena de juego.
+     */
     public void onIniciarPartida() {
         if (!MainApp.sessionService.isHost()) return;
         try {
@@ -185,7 +199,7 @@ public class LobbyController implements Initializable {
     }
 
     private void openGameScene() throws Exception {
-        FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/dino/views/game.fxml"));
+        FXMLLoader loader = new FXMLLoader(getClass().getResource("/com.dino.views/game.fxml"));
         Scene scene = new Scene(loader.load(), 1280, 780);
         MainApp.getStage().setScene(scene);
     }
