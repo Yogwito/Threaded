@@ -1,41 +1,51 @@
 package com.dino.presentation.components;
 
-import com.dino.application.services.EventBus;
+import com.dino.application.services.EventChannel;
 import com.dino.domain.events.EventNames;
 
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.Deque;
-import java.util.List;
+import java.util.*;
 
 /**
- * Observador que resume eventos importantes en un pequeño historial textual.
+ * Observador de UI que mantiene un log corto con los eventos más recientes.
+ *
+ * <p>Escucha eventos del bus global y los transforma en mensajes de texto listos
+ * para renderizar en la HUD de la partida. No conoce controles JavaFX ni
+ * modifica el estado del juego; solo resume actividad relevante para el
+ * jugador.</p>
  */
 public class EventLogObserver {
-    private static final int MAX = 5;
     private final Deque<String> entries = new ArrayDeque<>();
+    private static final int MAX = 5;
 
     /**
-     * Construye el observador y lo suscribe a los eventos relevantes de gameplay.
+     * Registra suscripciones al bus para construir el log incremental.
      *
-     * @param eventBus bus global del juego
+     * @param eventBus bus de eventos interno de la aplicación
      */
-    public EventLogObserver(EventBus eventBus) {
-        eventBus.subscribe(EventNames.BUTTON_STATE_CHANGED, e -> add(Boolean.TRUE.equals(e.get("pressed"))
-            ? "Boton activado"
-            : "Boton liberado"));
-        eventBus.subscribe(EventNames.PLAYER_DIED, e -> add("Caida de " + e.getOrDefault("playerId", "?")));
-        eventBus.subscribe(EventNames.PLAYER_REACHED_EXIT, e -> add(
-            e.getOrDefault("playerId", "?") + " llego #" + e.getOrDefault("finishOrder", "?")));
-        eventBus.subscribe(EventNames.SCORE_CHANGED, e -> {
-            int delta = ((Number) e.getOrDefault("delta", 0)).intValue();
-            String sign = delta >= 0 ? "+" : "";
-            add(e.getOrDefault("playerId", "?") + " " + sign + delta + " pts");
+    public EventLogObserver(EventChannel eventBus) {
+        eventBus.subscribe(EventNames.COIN_COLLECTED, e -> {
+            String player = (String) e.getOrDefault("playerId", "?");
+            int pts = e.containsKey("points") ? ((Number) e.get("points")).intValue() : 0;
+            add(player + " recogio moneda +" + pts);
         });
-        eventBus.subscribe(EventNames.ROOM_RESET, e -> add("Sala reiniciada"));
-        eventBus.subscribe(EventNames.LEVEL_ADVANCED, e ->
-            add("Nivel " + (((Number) e.getOrDefault("levelIndex", 0)).intValue() + 1)));
-        eventBus.subscribe(EventNames.LEVEL_COMPLETED, e -> add("Todos llegaron a la salida"));
+        eventBus.subscribe(EventNames.SCORE_CHANGED, e -> {
+            String player = (String) e.getOrDefault("playerId", "?");
+            int delta = e.containsKey("delta") ? ((Number) e.get("delta")).intValue() : 0;
+            String reason = String.valueOf(e.getOrDefault("reason", ""));
+            add(player + " " + (delta >= 0 ? "+" : "") + delta + " " + reason);
+        });
+        eventBus.subscribe(EventNames.PLAYER_JUMPED, e -> {
+            String player = (String) e.getOrDefault("playerId", "?");
+            add(player + " salto");
+        });
+        eventBus.subscribe(EventNames.PLAYER_REACHED_EXIT, e -> {
+            String player = (String) e.getOrDefault("playerId", "?");
+            int order = e.containsKey("finishOrder") ? ((Number) e.get("finishOrder")).intValue() : 0;
+            add(player + " llego a la salida #" + order);
+        });
+        eventBus.subscribe(EventNames.ROOM_RESET, e -> {
+            add("Reinicio: " + e.getOrDefault("reason", "sin motivo"));
+        });
     }
 
     private void add(String msg) {
@@ -44,9 +54,9 @@ public class EventLogObserver {
     }
 
     /**
-     * Retorna una copia del log reciente para mostrarlo en la interfaz.
+     * Devuelve una copia del log actual en orden de más reciente a más antiguo.
      *
-     * @return lista de textos visibles para el usuario
+     * @return entradas visibles para la interfaz
      */
     public List<String> getEntries() {
         return new ArrayList<>(entries);

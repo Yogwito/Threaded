@@ -4,6 +4,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
 import java.net.*;
+import java.net.Inet4Address;
+import java.net.InetSocketAddress;
 import java.util.*;
 
 /**
@@ -14,7 +16,7 @@ import java.util.*;
  * proyecto. No implementa reglas de juego ni sincronización avanzada; solo
  * transporte.</p>
  */
-public class UdpPeer {
+public class UdpPeer implements NetworkPeer {
     private DatagramSocket socket;
     private final ObjectMapper mapper = new ObjectMapper();
     private static final int BUFFER_SIZE = 65535;
@@ -29,12 +31,14 @@ public class UdpPeer {
      * @throws IOException si el socket no puede abrirse
      */
     public void bind(String ip, int port) throws IOException {
+        socket = new DatagramSocket(null);
+        socket.setReuseAddress(true);
         if (ip == null || ip.isBlank() || ip.equals("0.0.0.0")) {
-            socket = new DatagramSocket(port);
+            socket.bind(new InetSocketAddress(Inet4Address.getByName("0.0.0.0"), port));
         } else {
-            socket = new DatagramSocket(port, InetAddress.getByName(ip));
+            socket.bind(new InetSocketAddress(Inet4Address.getByName(ip), port));
         }
-        socket.setSoTimeout(1); // 1ms timeout for near-non-blocking receive
+        socket.setSoTimeout(1);
     }
 
     /**
@@ -73,13 +77,15 @@ public class UdpPeer {
      *
      * @param data mensaje a reenviar
      * @param addrs peers destino
-     * @param repeats cantidad de repeticiones
+     * @param repeats cantidad total de emisiones, incluida la primera
      * @param delayMs pausa entre repeticiones
      */
     public void broadcastBurst(Map<String, Object> data, List<InetSocketAddress> addrs, int repeats, int delayMs) {
         if (repeats <= 0) return;
+        broadcast(data, addrs);
+        if (repeats == 1) return;
         Thread.ofPlatform().daemon(true).start(() -> {
-            for (int i = 0; i < repeats; i++) {
+            for (int i = 1; i < repeats; i++) {
                 broadcast(data, addrs);
                 if (i + 1 < repeats) {
                     try {

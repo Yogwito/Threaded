@@ -1,15 +1,15 @@
 package com.dino.presentation.controllers;
 
-import com.dino.MainApp;
+import com.dino.application.runtime.AppContext;
 import com.dino.application.usecases.CreateSessionUseCase;
 import com.dino.application.usecases.JoinSessionUseCase;
-import com.dino.infrastructure.network.UdpPeer;
-import com.dino.infrastructure.serialization.MessageSerializer;
 import javafx.fxml.FXML;
-import javafx.fxml.FXMLLoader;
 import javafx.fxml.Initializable;
-import javafx.scene.Scene;
-import javafx.scene.control.*;
+import javafx.scene.control.ChoiceBox;
+import javafx.scene.control.Label;
+import javafx.scene.control.RadioButton;
+import javafx.scene.control.TextField;
+import javafx.scene.control.ToggleGroup;
 import javafx.scene.layout.HBox;
 
 import java.net.URL;
@@ -18,11 +18,12 @@ import java.util.ResourceBundle;
 /**
  * Controlador de la pantalla inicial.
  *
- * <p>Recoge el nombre del jugador y los parámetros básicos de red. Desde aquí
- * la instancia local decide si actuará como host o como cliente y luego abre el
- * lobby correspondiente.</p>
+ * <p>Recoge los datos básicos de red y del jugador, decide si la instancia
+ * actuará como host o cliente y delega la creación o unión de la sesión a los
+ * casos de uso de aplicación. Después abre la vista de lobby con el
+ * {@link AppContext} ya inicializado.</p>
  */
-public class StartMenuController implements Initializable {
+public class StartMenuController implements Initializable, AppContextAware {
     @FXML private TextField playerNameField;
     @FXML private RadioButton createRadio;
     @FXML private RadioButton joinRadio;
@@ -35,10 +36,13 @@ public class StartMenuController implements Initializable {
     @FXML private ChoiceBox<Integer> expectedPlayersChoice;
     @FXML private Label errorLabel;
 
-    /**
-     * Configura los controles iniciales y alterna campos según el modo
-     * seleccionado.
-     */
+    private AppContext appContext;
+
+    @Override
+    public void setAppContext(AppContext appContext) {
+        this.appContext = appContext;
+    }
+
     @Override
     public void initialize(URL url, ResourceBundle rb) {
         expectedPlayersChoice.getItems().addAll(2, 3, 4);
@@ -56,55 +60,59 @@ public class StartMenuController implements Initializable {
     }
 
     /**
-     * Valida la información del formulario, crea la sesión y abre el lobby.
-     *
-     * <p>Si se elige "Crear sala", inicializa la instancia local como host. Si
-     * se elige "Unirse", envía un primer {@code JOIN} al host remoto.</p>
+     * Valida el formulario inicial y abre el lobby de la sesión creada/unida.
      */
     @FXML
     public void onAbrirLobby() {
         errorLabel.setVisible(false);
         String name = playerNameField.getText().trim();
-        if (name.isEmpty()) { showError("Ingresa tu nombre de jugador."); return; }
+        if (name.isEmpty()) {
+            showError("Ingresa tu nombre de jugador.");
+            return;
+        }
 
         String localIp = localIpField.getText().trim();
         int localPort;
         try {
             localPort = Integer.parseInt(localPortField.getText().trim());
-        } catch (NumberFormatException e) { showError("Puerto local inválido."); return; }
+        } catch (NumberFormatException e) {
+            showError("Puerto local inválido.");
+            return;
+        }
 
-        UdpPeer udpPeer = new UdpPeer();
-        MessageSerializer serializer = new MessageSerializer();
+        var networkPeer = appContext.openNetworkPeer();
 
         try {
             if (createRadio.isSelected()) {
                 int expected = expectedPlayersChoice.getValue();
-                new CreateSessionUseCase(MainApp.sessionService, udpPeer, MainApp.eventBus)
+                new CreateSessionUseCase(appContext.session(), networkPeer, appContext.events())
                     .execute(name, localIp, localPort, expected);
             } else {
                 String hostIp = hostIpField.getText().trim();
-                if (hostIp.isEmpty()) { showError("Ingresa la IP del host."); return; }
+                if (hostIp.isEmpty()) {
+                    showError("Ingresa la IP del host.");
+                    return;
+                }
                 int hostPort;
                 try {
                     hostPort = Integer.parseInt(hostPortField.getText().trim());
-                } catch (NumberFormatException e) { showError("Puerto host inválido."); return; }
-                new JoinSessionUseCase(MainApp.sessionService, udpPeer, serializer, MainApp.eventBus)
+                } catch (NumberFormatException e) {
+                    showError("Puerto host inválido.");
+                    return;
+                }
+                new JoinSessionUseCase(appContext.session(), networkPeer, appContext.serializer(), appContext.events())
                     .execute(name, localIp, localPort, hostIp, hostPort);
             }
 
-            MainApp.udpPeer = udpPeer;
-            FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/dino/views/lobby.fxml"));
-            Scene scene = new Scene(loader.load(), 1280, 780);
-            MainApp.getStage().setScene(scene);
+            appContext.navigator().showLobby();
         } catch (Exception e) {
+            appContext.shutdownNetworking();
             showError("Error al conectar: " + e.getMessage());
         }
     }
 
     /**
-     * Muestra un mensaje de error en la misma pantalla.
-     *
-     * @param msg texto visible para el usuario
+     * Muestra un error breve de validación o conexión en la misma vista.
      */
     private void showError(String msg) {
         errorLabel.setText(msg);

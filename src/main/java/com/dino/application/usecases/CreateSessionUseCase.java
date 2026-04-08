@@ -1,10 +1,10 @@
 package com.dino.application.usecases;
 
-import com.dino.application.services.EventBus;
+import com.dino.application.services.EventPublisher;
 import com.dino.application.services.SessionService;
 import com.dino.domain.entities.Player;
 import com.dino.domain.events.EventNames;
-import com.dino.infrastructure.network.UdpPeer;
+import com.dino.infrastructure.network.NetworkPeer;
 
 import java.net.InetSocketAddress;
 import java.util.Map;
@@ -18,8 +18,8 @@ import java.util.UUID;
  */
 public class CreateSessionUseCase {
     private final SessionService sessionService;
-    private final UdpPeer udpPeer;
-    private final EventBus eventBus;
+    private final NetworkPeer udpPeer;
+    private final EventPublisher eventBus;
 
     /**
      * Construye el caso de uso con las dependencias mínimas necesarias.
@@ -28,7 +28,7 @@ public class CreateSessionUseCase {
      * @param udpPeer socket UDP local
      * @param eventBus bus de eventos para notificar la creación del jugador local
      */
-    public CreateSessionUseCase(SessionService sessionService, UdpPeer udpPeer, EventBus eventBus) {
+    public CreateSessionUseCase(SessionService sessionService, NetworkPeer udpPeer, EventPublisher eventBus) {
         this.sessionService = sessionService;
         this.udpPeer = udpPeer;
         this.eventBus = eventBus;
@@ -54,7 +54,7 @@ public class CreateSessionUseCase {
         sessionService.setPlayerName(playerName);
         sessionService.setExpectedPlayers(expectedPlayers);
 
-        Player host = new Player(playerId, playerName, "red");
+        Player host = new Player(playerId, playerName, "pride");
         host.setX(200); host.setY(200);
         sessionService.addPlayer(host);
         sessionService.registerPeerAddress(playerId, new InetSocketAddress(localIp, localPort));

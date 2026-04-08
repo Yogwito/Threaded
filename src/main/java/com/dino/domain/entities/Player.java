@@ -21,6 +21,7 @@ public class Player {
     private boolean alive;
     private boolean atExit;
     private double targetX;
+    private double targetY;
     private int score;
     private int deaths;
     private int finishOrder;
@@ -45,6 +46,7 @@ public class Player {
         this.connected = true;
         this.ready = false;
         this.targetX = 0;
+        this.targetY = 0;
     }
 
     /** @return ancho jugable del personaje según la configuración global */
@@ -108,6 +110,8 @@ public class Player {
     public void setAtExit(boolean atExit) { this.atExit = atExit; }
     public double getTargetX() { return targetX; }
     public void setTargetX(double targetX) { this.targetX = targetX; }
+    public double getTargetY() { return targetY; }
+    public void setTargetY(double targetY) { this.targetY = targetY; }
     public int getDeaths() { return deaths; }
     public void setDeaths(int deaths) { this.deaths = deaths; }
     public int getFinishOrder() { return finishOrder; }

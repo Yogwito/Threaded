@@ -1,31 +1,30 @@
 package com.dino.presentation.components;
 
-import com.dino.application.services.EventBus;
+import com.dino.application.services.EventChannel;
 import com.dino.domain.entities.Player;
 import com.dino.domain.events.EventNames;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
- * Observador que mantiene una vista ordenada del ranking actual.
+ * Observador que reconstruye una tabla de puntajes a partir de snapshots.
  *
- * <p>Consume snapshots ya generados por el host y construye una lista ligera de
- * jugadores ordenada por puntaje, orden de llegada y caídas.</p>
+ * <p>Su responsabilidad es desacoplar la lógica de ordenamiento del scoreboard
+ * respecto de los controladores JavaFX. Consume snapshots o el cierre de
+ * partida, extrae solo los campos necesarios y deja una colección inmutable
+ * lista para dibujarse.</p>
  */
 public class ScoreBoardObserver {
     private final List<Player> entries = new ArrayList<>();
 
     /**
-     * Suscribe el observador a snapshots y al fin de partida.
+     * Se suscribe a los eventos que contienen una vista consistente de puntajes.
      *
-     * @param eventBus bus global del juego
+     * @param eventBus bus de eventos global de la aplicación
      */
-    public ScoreBoardObserver(EventBus eventBus) {
+    public ScoreBoardObserver(EventChannel eventBus) {
         eventBus.subscribe(EventNames.SNAPSHOT_RECEIVED, this::onSnapshot);
-        eventBus.subscribe(EventNames.GAME_OVER, this::onSnapshot);
+        eventBus.subscribe(EventNames.GAME_OVER,         this::onSnapshot);
     }
 
     @SuppressWarnings("unchecked")
@@ -37,29 +36,16 @@ public class ScoreBoardObserver {
             Player p = new Player();
             p.setId((String) pd.get("id"));
             p.setName((String) pd.get("name"));
-            p.setAtExit((Boolean) pd.getOrDefault("atExit", false));
-            p.setAlive((Boolean) pd.getOrDefault("alive", true));
-            p.setConnected((Boolean) pd.getOrDefault("connected", true));
-            p.setScore(((Number) pd.getOrDefault("score", 0)).intValue());
-            p.setDeaths(((Number) pd.getOrDefault("deaths", 0)).intValue());
-            p.setFinishOrder(((Number) pd.getOrDefault("finishOrder", 0)).intValue());
+            p.setScore(((Number) pd.get("score")).intValue());
             entries.add(p);
         }
-        entries.sort((a, b) -> {
-            if (a.getScore() != b.getScore()) return Integer.compare(b.getScore(), a.getScore());
-            if (a.getFinishOrder() != b.getFinishOrder()) {
-                int orderA = a.getFinishOrder() == 0 ? Integer.MAX_VALUE : a.getFinishOrder();
-                int orderB = b.getFinishOrder() == 0 ? Integer.MAX_VALUE : b.getFinishOrder();
-                return Integer.compare(orderA, orderB);
-            }
-            return Integer.compare(a.getDeaths(), b.getDeaths());
-        });
+        entries.sort((a, b) -> Integer.compare(b.getScore(), a.getScore()));
     }
 
     /**
-     * Retorna la clasificación actual en modo solo lectura.
+     * Devuelve la tabla de puntajes ordenada de mayor a menor.
      *
-     * @return ranking observable por la UI
+     * @return vista inmutable del ranking actual
      */
     public List<Player> getEntries() {
         return Collections.unmodifiableList(entries);

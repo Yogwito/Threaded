@@ -1,16 +1,13 @@
 package com.dino.presentation.controllers;
 
-import com.dino.MainApp;
-import com.dino.application.services.HostMatchService;
+import com.dino.application.runtime.AppContext;
 import com.dino.config.GameConfig;
 import com.dino.domain.entities.Player;
 import com.dino.domain.events.EventNames;
 import com.dino.infrastructure.serialization.MessageSerializer;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
-import javafx.fxml.FXMLLoader;
 import javafx.fxml.Initializable;
-import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.ListView;
@@ -25,46 +22,44 @@ import java.util.Timer;
 import java.util.TimerTask;
 
 /**
- * Controlador del lobby previo a la partida.
+ * Controlador de la sala de espera previa a la partida.
  *
- * <p>Gestiona la espera de jugadores, el estado {@code ready}, el intercambio
- * de snapshots del lobby y la transición hacia la escena principal. Cuando la
- * instancia local es host, también acepta nuevos jugadores y arranca la partida.</p>
+ * <p>Sincroniza la lista de jugadores, procesa mensajes básicos de lobby y
+ * permite marcar estado de listo o arrancar la simulación cuando la instancia
+ * local es host. También actúa como puente temporal entre la capa de red UDP y
+ * la transición hacia la escena principal del juego.</p>
  */
-public class LobbyController implements Initializable {
+public class LobbyController implements Initializable, AppContextAware {
     @FXML private ListView<String> playersList;
     @FXML private Button startBtn;
     @FXML private Label statusLabel;
 
-    private final MessageSerializer serializer = new MessageSerializer();
+    private AppContext appContext;
     private Timer networkTimer;
     private long lastLobbyBroadcastAt = 0;
-    private long lastHeartbeatAt = 0;
-    private boolean startGameHandled = false;
+    private boolean startTransitionTriggered = false;
 
-    /**
-     * Prepara la lista inicial de jugadores y arranca el loop de red del lobby.
-     */
+    @Override
+    public void setAppContext(AppContext appContext) {
+        this.appContext = appContext;
+    }
+
     @Override
     public void initialize(URL url, ResourceBundle rb) {
-        startBtn.setVisible(MainApp.sessionService.isHost());
+        startBtn.setVisible(appContext.session().isHost());
 
-        MainApp.eventBus.subscribe(EventNames.PLAYER_JOINED,    e -> refreshPlayerList());
-        MainApp.eventBus.subscribe(EventNames.PLAYER_READY,     e -> refreshPlayerList());
-        MainApp.eventBus.subscribe(EventNames.SNAPSHOT_RECEIVED, e -> refreshPlayerList());
+        appContext.events().subscribe(EventNames.PLAYER_JOINED, e -> refreshPlayerList());
+        appContext.events().subscribe(EventNames.PLAYER_READY, e -> refreshPlayerList());
+        appContext.events().subscribe(EventNames.SNAPSHOT_RECEIVED, e -> refreshPlayerList());
 
         refreshPlayerList();
-
         startNetworkLoop();
     }
 
-    /**
-     * Refresca la lista visible de jugadores usando un snapshot defensivo.
-     */
     private void refreshPlayerList() {
         Platform.runLater(() -> {
             playersList.getItems().clear();
-            for (Player p : MainApp.sessionService.getPlayersSnapshot()) {
+            for (Player p : appContext.session().getPlayersSnapshot()) {
                 String state = p.isReady() ? " listo" : (p.isConnected() ? " conectado" : " desconectado");
                 playersList.getItems().add(p.getName() + " [" + state + "]");
             }
@@ -72,25 +67,24 @@ public class LobbyController implements Initializable {
     }
 
     /**
-     * Marca al jugador local como listo.
-     *
-     * <p>Si la instancia es host actualiza el estado local y redistribuye el
-     * snapshot. Si es cliente, envía un mensaje {@code READY} al host.</p>
+     * Marca al jugador local como listo y propaga el cambio al resto de peers.
      */
     @FXML
     public void onListo() {
-        if (MainApp.sessionService.isHost()) {
-            MainApp.sessionService.markPlayerReady(MainApp.sessionService.getLocalPlayerId(), true);
-            MainApp.eventBus.publish(EventNames.PLAYER_READY, Map.of("playerId", MainApp.sessionService.getLocalPlayerId()));
+        if (appContext.session().isHost()) {
+            appContext.session().markPlayerReady(appContext.session().getLocalPlayerId(), true);
+            appContext.events().publish(EventNames.PLAYER_READY, Map.of("playerId", appContext.session().getLocalPlayerId()));
             broadcastLobbySnapshot();
             statusLabel.setText("Host listo. Esperando más jugadores...");
         } else {
             try {
-                Map<String, Object> msg = serializer.build(MessageSerializer.READY,
-                    "playerId", MainApp.sessionService.getLocalPlayerId());
-                MainApp.udpPeer.send(msg,
-                    InetAddress.getByName(MainApp.sessionService.getHostIp()),
-                    MainApp.sessionService.getHostPort());
+                Map<String, Object> msg = appContext.serializer().build(
+                    MessageSerializer.READY,
+                    "playerId", appContext.session().getLocalPlayerId()
+                );
+                appContext.networkPeer().send(msg,
+                    InetAddress.getByName(appContext.session().getHostIp()),
+                    appContext.session().getHostPort());
                 statusLabel.setText("Listo! Esperando al host...");
             } catch (Exception e) {
                 statusLabel.setText("Error: " + e.getMessage());
@@ -99,160 +93,104 @@ public class LobbyController implements Initializable {
     }
 
     /**
-     * Inicia la partida desde el host.
+     * Inicia la simulación autoritativa del host y abre la escena de juego.
      *
-     * <p>El host crea la simulación autoritativa, genera el primer snapshot del
-     * juego y difunde varios {@code START_GAME} para reducir pérdida de paquetes.</p>
+     * <p>El mensaje de arranque se reenvía en ráfaga corta por UDP para reducir
+     * el riesgo de que un único paquete perdido deje a un cliente atrapado en el
+     * lobby.</p>
      */
     @FXML
     public void onIniciarPartida() {
-        if (!MainApp.sessionService.isHost()) return;
+        if (!appContext.session().isHost()) return;
         try {
-            HostMatchService hostMatchService = new HostMatchService(MainApp.sessionService, MainApp.eventBus);
-            MainApp.hostMatchService = hostMatchService;
+            var hostMatchService = appContext.createHostMatchService();
             hostMatchService.initWorld();
-            Map<String, Object> startMessage = MainApp.sessionService.getSnapshotData();
+            Map<String, Object> startMessage = appContext.session().getSnapshotData();
             startMessage.put("type", MessageSerializer.START_GAME);
-            MainApp.udpPeer.broadcastBurst(startMessage, MainApp.sessionService.getRemotePeerAddresses(), 6, 55);
-            MainApp.eventBus.publish(EventNames.GAME_STARTED, Map.of());
+            appContext.networkPeer().broadcastBurst(startMessage, appContext.session().getRemotePeerAddresses(),
+                GameConfig.CRITICAL_BROADCAST_REPEATS, GameConfig.CRITICAL_BROADCAST_DELAY_MS);
+            appContext.events().publish(EventNames.GAME_STARTED, Map.of());
             if (networkTimer != null) networkTimer.cancel();
-            openGameScene();
+            appContext.navigator().showGame();
         } catch (Exception e) {
             statusLabel.setText("Error: " + e.getMessage());
         }
     }
 
     /**
-     * Arranca un timer liviano encargado de procesar mensajes del lobby.
-     *
-     * <p>En host también mantiene snapshots periódicos y expiración de peers; en
-     * cliente envía heartbeat para que el host sepa que sigue vivo.</p>
+     * Atiende el loop de red del lobby con polling liviano.
      */
     private void startNetworkLoop() {
         networkTimer = new Timer(true);
         networkTimer.scheduleAtFixedRate(new TimerTask() {
             @Override
             public void run() {
-                if (MainApp.udpPeer == null || !MainApp.udpPeer.isBound()) return;
-                if (MainApp.sessionService.isHost()) {
-                    expireInactivePeersIfNeeded();
-                    broadcastLobbySnapshotIfDue();
-                } else {
-                    sendHeartbeatIfDue();
-                }
-                var received = MainApp.udpPeer.receive();
+                if (appContext.networkPeer() == null || !appContext.networkPeer().isBound()) return;
+                if (appContext.session().isHost()) broadcastLobbySnapshotIfDue();
+                var received = appContext.networkPeer().receive();
                 received.ifPresent(entry -> handleMessage(entry.getKey(), entry.getValue()));
             }
         }, 0, 100);
     }
 
-    /**
-     * Enruta un mensaje entrante al comportamiento de host o cliente.
-     *
-     * @param msg contenido recibido por UDP
-     * @param sender dirección del peer que originó el mensaje
-     */
     private void handleMessage(Map<String, Object> msg, InetSocketAddress sender) {
         String type = (String) msg.get("type");
         if (type == null) return;
 
-        if (MainApp.sessionService.isHost()) {
+        if (appContext.session().isHost()) {
             handleHostMessage(type, msg, sender);
             return;
         }
 
         if (MessageSerializer.START_GAME.equals(type)) {
-            if (startGameHandled) return;
-            startGameHandled = true;
-            MainApp.sessionService.updateFromSnapshot(msg);
+            if (startTransitionTriggered) return;
+            startTransitionTriggered = true;
+            appContext.session().updateFromSnapshot(msg);
             Platform.runLater(() -> {
                 try {
                     if (networkTimer != null) networkTimer.cancel();
-                    MainApp.eventBus.publish(EventNames.GAME_STARTED, Map.of());
-                    openGameScene();
+                    appContext.events().publish(EventNames.GAME_STARTED, Map.of());
+                    appContext.navigator().showGame();
                 } catch (Exception e) {
                     statusLabel.setText("Error: " + e.getMessage());
                 }
             });
         } else if (MessageSerializer.LOBBY_SNAPSHOT.equals(type)) {
-            MainApp.sessionService.updateFromSnapshot(msg);
+            appContext.session().updateFromSnapshot(msg);
         }
     }
 
-    /**
-     * Lógica exclusiva del host para el lobby.
-     *
-     * <p>Desde aquí se aceptan nuevos jugadores, se registran heartbeats y se
-     * eliminan peers desconectados.</p>
-     */
     private void handleHostMessage(String type, Map<String, Object> msg, InetSocketAddress sender) {
         if (MessageSerializer.JOIN.equals(type)) {
             String playerId = (String) msg.get("playerId");
             String name = (String) msg.getOrDefault("name", "Jugador");
             if (playerId == null || playerId.isBlank()) return;
 
-            Player player = MainApp.sessionService.getPlayers().get(playerId);
+            Player player = appContext.session().getPlayers().get(playerId);
             if (player == null) {
                 player = new Player(playerId, name, nextPlayerColor());
-                MainApp.sessionService.addPlayer(player);
+                appContext.session().addPlayer(player);
             } else {
                 player.setName(name);
                 player.setConnected(true);
             }
-            MainApp.sessionService.registerPeerAddress(playerId, sender);
-            MainApp.sessionService.markPeerSeen(playerId);
-            MainApp.eventBus.publish(EventNames.PLAYER_JOINED, Map.of("playerId", playerId, "name", name));
+            appContext.session().registerPeerAddress(playerId, sender);
+            appContext.events().publish(EventNames.PLAYER_JOINED, Map.of("playerId", playerId, "name", name));
             broadcastLobbySnapshot();
         } else if (MessageSerializer.READY.equals(type)) {
             String playerId = (String) msg.get("playerId");
-            MainApp.sessionService.registerPeerAddress(playerId, sender);
-            MainApp.sessionService.markPeerSeen(playerId);
-            MainApp.sessionService.markPlayerConnected(playerId, true);
-            MainApp.sessionService.markPlayerReady(playerId, true);
-            MainApp.eventBus.publish(EventNames.PLAYER_READY, msg);
+            appContext.session().markPlayerReady(playerId, true);
+            appContext.events().publish(EventNames.PLAYER_READY, msg);
             Platform.runLater(() -> statusLabel.setText("Jugador listo: " + msg.getOrDefault("playerId", "?")));
             broadcastLobbySnapshot();
-        } else if (MessageSerializer.HEARTBEAT.equals(type)) {
-            String playerId = (String) msg.get("playerId");
-            MainApp.sessionService.registerPeerAddress(playerId, sender);
-            MainApp.sessionService.markPeerSeen(playerId);
-            MainApp.sessionService.markPlayerConnected(playerId, true);
         } else if (MessageSerializer.DISCONNECT.equals(type)) {
             String playerId = (String) msg.get("playerId");
-            MainApp.sessionService.removePlayer(playerId);
+            appContext.session().removePlayer(playerId);
             Platform.runLater(() -> statusLabel.setText("Jugador desconectado: " + msg.getOrDefault("playerId", "?")));
             broadcastLobbySnapshot();
         }
     }
 
-    /**
-     * Mantiene vivo al cliente dentro del lobby cuando aún no hay partida.
-     */
-    private void sendHeartbeatIfDue() {
-        long now = System.currentTimeMillis();
-        if (now - lastHeartbeatAt < (long) (GameConfig.CLIENT_HEARTBEAT_SECONDS * 1000)) return;
-        lastHeartbeatAt = now;
-        try {
-            Map<String, Object> msg = serializer.build(MessageSerializer.HEARTBEAT,
-                "playerId", MainApp.sessionService.getLocalPlayerId());
-            MainApp.udpPeer.send(msg,
-                InetAddress.getByName(MainApp.sessionService.getHostIp()),
-                MainApp.sessionService.getHostPort());
-        } catch (Exception ignored) {
-        }
-    }
-
-    /**
-     * Elimina peers inactivos del lobby cuando superan el timeout configurado.
-     */
-    private void expireInactivePeersIfNeeded() {
-        List<String> expired = MainApp.sessionService.expireInactivePeers((long) (GameConfig.HOST_PEER_TIMEOUT_SECONDS * 1000));
-        if (!expired.isEmpty()) broadcastLobbySnapshot();
-    }
-
-    /**
-     * Limita la frecuencia de snapshots del lobby para no saturar la red.
-     */
     private void broadcastLobbySnapshotIfDue() {
         long now = System.currentTimeMillis();
         if (now - lastLobbyBroadcastAt < 250) return;
@@ -260,34 +198,17 @@ public class LobbyController implements Initializable {
         lastLobbyBroadcastAt = now;
     }
 
-    /**
-     * Envía el estado completo del lobby a todos los clientes remotos.
-     */
     private void broadcastLobbySnapshot() {
-        List<InetSocketAddress> remotes = MainApp.sessionService.getRemotePeerAddresses();
+        List<InetSocketAddress> remotes = appContext.session().getRemotePeerAddresses();
         if (remotes.isEmpty()) return;
-        Map<String, Object> snapshot = MainApp.sessionService.getSnapshotData();
+        Map<String, Object> snapshot = appContext.session().getSnapshotData();
         snapshot.put("type", MessageSerializer.LOBBY_SNAPSHOT);
-        MainApp.udpPeer.broadcast(snapshot, remotes);
+        appContext.networkPeer().broadcast(snapshot, remotes);
     }
 
-    /**
-     * Asigna colores predeterminados a nuevos jugadores según el orden de llegada.
-     */
     private String nextPlayerColor() {
         String[] colors = {"red", "blue", "green", "yellow"};
-        int index = Math.max(0, MainApp.sessionService.getPlayers().size()) % colors.length;
+        int index = Math.max(0, appContext.session().getPlayers().size()) % colors.length;
         return colors[index];
-    }
-
-    /**
-     * Cambia la escena actual hacia la vista de juego.
-     *
-     * @throws Exception si falla la carga del FXML
-     */
-    private void openGameScene() throws Exception {
-        FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/dino/views/game.fxml"));
-        Scene scene = new Scene(loader.load(), 1280, 780);
-        MainApp.getStage().setScene(scene);
     }
 }

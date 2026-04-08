@@ -18,7 +18,12 @@ public final class GameConfig {
     public static final int WINDOW_HEIGHT = 780;
     /** Frecuencia objetivo de render. */
     public static final int FPS = 60;
-    /** Frecuencia con la que el host difunde snapshots UDP. */
+    /**
+     * Frecuencia con la que el host difunde snapshots UDP.
+     *
+     * <p>Es la fuente de verdad para la sincronización periódica; el runtime no
+     * debe duplicar este valor con otro intervalo hardcodeado.</p>
+     */
     public static final int SNAPSHOT_RATE_HZ = 30;
 
     public static final int LEVEL_WIDTH = 1800;
@@ -33,6 +38,7 @@ public final class GameConfig {
     public static final double MOVE_ACCELERATION = 1850.0;
     public static final double AIR_MOVE_ACCELERATION = 1100.0;
     public static final double MOVE_FRICTION = 2200.0;
+    public static final double JUMP_FORCE = -560.0;
     public static final double JUMP_VELOCITY = -560.0;
     public static final double GRAVITY = 1480.0;
     public static final double COYOTE_TIME_SECONDS = 0.11;
@@ -46,24 +52,29 @@ public final class GameConfig {
     public static final double THREAD_DAMPING = 2.4;
     public static final double THREAD_VERTICAL_PULL = 0.16;
     public static final double THREAD_HARD_LIMIT = 340.0;
+    public static final double THREAD_HARD_PULL_FACTOR = 11.2;
+    public static final double THREAD_HARD_DAMPING = 3.6;
+    public static final double THREAD_MAX_POSITION_CORRECTION_PER_TICK = 18.0;
+    public static final double THREAD_POSITION_STEP = 4.0;
+    public static final double THREAD_SEPARATION_CANCEL_FACTOR = 0.9;
+    public static final double THREAD_OBSTRUCTION_MARGIN = 2.0;
+    public static final double THREAD_GROUNDED_VERTICAL_FACTOR = 0.05;
+    public static final double THREAD_AIR_VERTICAL_FACTOR = 0.16;
     public static final double PLAYER_COLLISION_CONTACT_MARGIN = 9.0;
     public static final double PLAYER_COLLISION_VELOCITY_DAMPING = 0.72;
     public static final double PLAYER_COLLISION_CARRY_RATIO = 0.35;
     public static final double TARGET_REACHED_TOLERANCE = 8.0;
-    public static final double MOUSE_JUMP_VERTICAL_THRESHOLD = 55.0;
     public static final double CLIENT_INPUT_RESEND_SECONDS = 0.033;
-    public static final double CLIENT_HEARTBEAT_SECONDS = 0.35;
-    public static final double HOST_PEER_TIMEOUT_SECONDS = 2.4;
     public static final double REMOTE_SMOOTHING = 0.18;
     public static final double VISUAL_STRETCH_SMOOTHING = 0.2;
     public static final double REMOTE_PREDICTION_SECONDS = 0.10;
     public static final double LOCAL_CLIENT_PREDICTION_SECONDS = 0.06;
     public static final double SNAPSHOT_INTERPOLATION_DELAY_SECONDS = 0.09;
     public static final int MAX_BUFFERED_SNAPSHOTS = 8;
-    public static final double CRITICAL_ACK_TIMEOUT_SECONDS = 2.0;
+    public static final int CRITICAL_BROADCAST_REPEATS = 3;
+    public static final int CRITICAL_BROADCAST_DELAY_MS = 120;
     public static final double CAMERA_GROUP_INFLUENCE = 0.26;
     public static final double SNAPSHOT_STALE_WARNING_SECONDS = 0.28;
-    public static final int TOTAL_LEVELS = 5;
 
     public static final double BUTTON_WIDTH = 80.0;
     public static final double BUTTON_HEIGHT = 16.0;

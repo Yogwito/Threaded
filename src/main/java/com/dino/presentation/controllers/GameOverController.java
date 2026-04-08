@@ -1,77 +1,72 @@
 package com.dino.presentation.controllers;
 
-import com.dino.MainApp;
-import com.dino.config.GameConfig;
+import com.dino.application.runtime.AppContext;
 import com.dino.domain.entities.Player;
+import javafx.beans.property.SimpleIntegerProperty;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.fxml.FXML;
-import javafx.fxml.FXMLLoader;
 import javafx.fxml.Initializable;
-import javafx.scene.Scene;
 import javafx.scene.control.Label;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 
 import java.net.URL;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 import java.util.ResourceBundle;
 
 /**
- * Controlador de la pantalla final.
+ * Controlador de la pantalla final de resultados.
  *
- * <p>Presenta el ranking consolidado al terminar la campaña, mostrando ganador,
- * puntajes, caídas y tiempo total. No recalcula la simulación; solo consume el
- * último estado almacenado en {@link MainApp#sessionService}.</p>
+ * <p>Toma el estado final replicado de la sesión, construye una tabla ordenada
+ * por puntaje y muestra el ganador junto al tiempo total de campaña. Desde esta
+ * vista también reinicia el runtime compartido para volver al menú principal.</p>
  */
-public class GameOverController implements Initializable {
+public class GameOverController implements Initializable, AppContextAware {
     @FXML private TableView<Player> resultsTable;
     @FXML private TableColumn<Player, String> posColumn;
     @FXML private TableColumn<Player, String> nameColumn;
-    @FXML private TableColumn<Player, String> scoreColumn;
+    @FXML private TableColumn<Player, Integer> scoreColumn;
     @FXML private Label winnerLabel;
     @FXML private Label totalTimeLabel;
 
-    /**
-     * Carga la tabla final y resalta al ganador.
-     */
+    private AppContext appContext;
+
+    @Override
+    public void setAppContext(AppContext appContext) {
+        this.appContext = appContext;
+    }
+
     @Override
     public void initialize(URL url, ResourceBundle rb) {
-        List<Player> sorted = new ArrayList<>(MainApp.sessionService.getPlayersSnapshot());
-        sorted.sort(Comparator
-            .comparingInt(Player::getScore).reversed()
-            .thenComparingInt(player -> player.getFinishOrder() == 0 ? Integer.MAX_VALUE : player.getFinishOrder())
-            .thenComparingInt(Player::getDeaths));
+        List<Player> sorted = new ArrayList<>(appContext.session().getPlayersSnapshot());
+        sorted.sort((a, b) -> Integer.compare(b.getScore(), a.getScore()));
 
-        posColumn.setCellValueFactory(data ->
-            new SimpleStringProperty("#" + (sorted.indexOf(data.getValue()) + 1)));
+        posColumn.setCellValueFactory(data -> {
+            int pos = sorted.indexOf(data.getValue()) + 1;
+            return new SimpleStringProperty("#" + pos);
+        });
         nameColumn.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getName()));
-        scoreColumn.setCellValueFactory(data -> new SimpleStringProperty(
-            data.getValue().getScore() + " pts · caidas " + data.getValue().getDeaths()));
+        scoreColumn.setCellValueFactory(data ->
+            new SimpleIntegerProperty(data.getValue().getScore()).asObject());
 
         resultsTable.getItems().addAll(sorted);
+
         if (!sorted.isEmpty()) {
-            Player winner = sorted.get(0);
-            winnerLabel.setText("Ganador: " + winner.getName() + " con " + winner.getScore() + " pts");
-        } else {
-            winnerLabel.setText("Ganador: —");
+            boolean tie = sorted.size() > 1 && sorted.get(0).getScore() == sorted.get(1).getScore();
+            winnerLabel.setText(tie
+                ? "¡Empate!"
+                : "Ganador: " + sorted.get(0).getName() + " (" + sorted.get(0).getScore() + " masa)");
         }
-        totalTimeLabel.setText(String.format("Tiempo total: %.1fs", MainApp.sessionService.getElapsedTime()));
+
+        totalTimeLabel.setText(String.format("Duración: %.1fs", appContext.session().getElapsedTime()));
     }
 
     /**
-     * Vuelve al menú inicial y reinicia por completo el estado global.
+     * Limpia el runtime compartido y regresa al menú inicial.
      */
     @FXML
     public void onVolverAlMenu() {
-        MainApp.resetRuntimeState();
-        try {
-            FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/dino/views/start_menu.fxml"));
-            Scene scene = new Scene(loader.load(), GameConfig.WINDOW_WIDTH, GameConfig.WINDOW_HEIGHT);
-            MainApp.getStage().setScene(scene);
-        } catch (Exception e) {
-            System.err.println("[GameOverController] Error: " + e.getMessage());
-        }
+        appContext.resetToStartMenu();
     }
 }
