@@ -84,8 +84,15 @@ Después de la metadata, cada fila representa tiles del mundo separados por coma
 
 - El host mantiene la simulación y emite snapshots periódicos del estado completo.
 - Los clientes no resuelven la lógica principal del juego; reflejan snapshots y envían input.
+- Las interacciones físicas relevantes se resuelven del lado host, incluida la cuerda y el apilamiento entre jugadores.
 - El render usa una estética pixel art con paletas por bioma.
 - El personaje host usa una variante visual inspirada en la bandera del orgullo.
+
+## Ajustes recientes de físicas e interacción
+
+- La cuerda usa una cadena fija por orden de unión y aplica tensión con validación contra colisiones para evitar arrastres a través de sólidos.
+- Cuando un jugador queda apoyado sobre otro, el jugador de arriba cuenta como `grounded` para el host y puede saltar como si estuviera sobre suelo.
+- Ese estado de apoyo solo beneficia al jugador superior; el jugador de abajo no gana `grounded` extra por esa interacción.
 
 ## Limitaciones actuales
 

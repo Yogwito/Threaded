@@ -32,6 +32,9 @@ import java.util.Map;
 public class HostMatchService {
     private static final double COLLISION_SOUND_COOLDOWN = 0.12;
     private static final double THREAD_SOUND_COOLDOWN = 0.16;
+    private static final double PLAYER_STACK_HORIZONTAL_INSET = 4.0;
+    private static final double PLAYER_STACK_FEET_TOLERANCE = 6.0;
+    private static final double PLAYER_STACK_ASCENT_TOLERANCE = -10.0;
 
     private final SessionService sessionService;
     private final EventBus eventBus;
@@ -120,6 +123,7 @@ public class HostMatchService {
 
         applyThreadElasticity(players, dt);
         resolvePlayerCollisions(players);
+        refreshPlayerStackingGroundState(players);
         updatePushBlocks(players, dt);
 
         updateButtonAndDoor(players);
@@ -509,6 +513,46 @@ public class HostMatchService {
                 resolveVerticalCollisions(a);
                 resolveHorizontalCollisions(b);
                 resolveVerticalCollisions(b);
+            }
+        }
+    }
+
+    private void refreshPlayerStackingGroundState(List<Player> players) {
+        for (Player player : players) {
+            if (player == null || !player.isAlive() || !player.isConnected()) {
+                continue;
+            }
+
+            double playerBottom = player.getY() + player.getHeight();
+            double playerLeft = player.getX();
+            double playerRight = player.getX() + player.getWidth();
+
+            for (Player other : players) {
+                if (other == null || other == player || !other.isAlive() || !other.isConnected()) {
+                    continue;
+                }
+
+                double otherTop = other.getY();
+                double otherLeft = other.getX();
+                double otherRight = other.getX() + other.getWidth();
+
+                boolean horizontalOverlap = playerRight > otherLeft + PLAYER_STACK_HORIZONTAL_INSET
+                    && playerLeft < otherRight - PLAYER_STACK_HORIZONTAL_INSET;
+                boolean feetTouchingTop = Math.abs(playerBottom - otherTop) <= PLAYER_STACK_FEET_TOLERANCE;
+                boolean descendingOrResting = player.getVy() >= PLAYER_STACK_ASCENT_TOLERANCE;
+                boolean playerIsAbove = player.getCenterY() < other.getCenterY();
+
+                if (!horizontalOverlap || !feetTouchingTop || !descendingOrResting || !playerIsAbove) {
+                    continue;
+                }
+
+                player.setGrounded(true);
+                player.setCoyoteTimer(GameConfig.COYOTE_TIME_SECONDS);
+                if (player.getVy() > 0.0) {
+                    player.setVy(0.0);
+                }
+                player.setY(otherTop - player.getHeight());
+                break;
             }
         }
     }
