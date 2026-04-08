@@ -357,15 +357,16 @@ public class HostMatchService {
                 ));
             }
 
+            double verticalFactor = (!a.isGrounded() && !b.isGrounded()) ? GameConfig.THREAD_VERTICAL_PULL * 0.4 : GameConfig.THREAD_VERTICAL_PULL * 0.1;
             a.setX(a.getX() + nx * pull * aShare);
-            a.setY(a.getY() + ny * pull * GameConfig.THREAD_VERTICAL_PULL * aShare);
+            a.setY(a.getY() + ny * pull * verticalFactor * aShare);
             b.setX(b.getX() - nx * pull * bShare);
-            b.setY(b.getY() - ny * pull * GameConfig.THREAD_VERTICAL_PULL * bShare);
+            b.setY(b.getY() - ny * pull * verticalFactor * bShare);
 
             a.setVx(a.getVx() + nx * pull * 0.55);
             b.setVx(b.getVx() - nx * pull * 0.55);
-            if (!a.isGrounded()) a.setVy(a.getVy() + ny * pull * 0.22);
-            if (!b.isGrounded()) b.setVy(b.getVy() - ny * pull * 0.22);
+            if (!a.isGrounded()) a.setVy(a.getVy() + ny * pull * 0.10);
+            if (!b.isGrounded()) b.setVy(b.getVy() - ny * pull * 0.10);
 
             clampPlayer(a);
             resolveHorizontalCollisions(a);
@@ -377,7 +378,9 @@ public class HostMatchService {
             if (distance > GameConfig.THREAD_HARD_LIMIT) {
                 double excess = distance - GameConfig.THREAD_HARD_LIMIT;
                 a.setX(a.getX() + nx * excess * aShare);
+                a.setY(a.getY() + ny * excess * verticalFactor * aShare);
                 b.setX(b.getX() - nx * excess * bShare);
+                b.setY(b.getY() - ny * excess * verticalFactor * bShare);
                 a.setVx(a.getVx() * 0.65);
                 b.setVx(b.getVx() * 0.65);
                 clampPlayer(a);

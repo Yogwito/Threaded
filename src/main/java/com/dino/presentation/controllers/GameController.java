@@ -53,7 +53,7 @@ public class GameController implements Initializable {
     @FXML private ListView<String> eventLog;
     @FXML private Label feedbackLabel;
 
-    private static final double SNAPSHOT_INTERVAL = 1.0 / 10.0;
+    private static final double SNAPSHOT_INTERVAL = 1.0 / 20.0;
     private static final double CAMERA_SMOOTHING = 0.16;
     private static final double FEEDBACK_DURATION_SECONDS = 1.4;
 
@@ -65,6 +65,8 @@ public class GameController implements Initializable {
     private double cameraX = 0;
     private double cameraY = 0;
     private double currentZoom = GameConfig.BASE_ZOOM;
+    private double lastWorldMouseX = 0;
+    private double lastWorldMouseY = 0;
 
     @Override
     public void initialize(URL url, ResourceBundle rb) {
@@ -83,8 +85,16 @@ public class GameController implements Initializable {
         feedbackLabel.setVisible(false);
         applyHudStyles();
 
-        arenaCanvas.setOnMouseMoved(ev -> sendAim(canvasToWorldX(ev.getX()), canvasToWorldY(ev.getY())));
-        arenaCanvas.setOnMouseDragged(ev -> sendAim(canvasToWorldX(ev.getX()), canvasToWorldY(ev.getY())));
+        arenaCanvas.setOnMouseMoved(ev -> {
+            lastWorldMouseX = canvasToWorldX(ev.getX());
+            lastWorldMouseY = canvasToWorldY(ev.getY());
+            sendAim(lastWorldMouseX, lastWorldMouseY);
+        });
+        arenaCanvas.setOnMouseDragged(ev -> {
+            lastWorldMouseX = canvasToWorldX(ev.getX());
+            lastWorldMouseY = canvasToWorldY(ev.getY());
+            sendAim(lastWorldMouseX, lastWorldMouseY);
+        });
         arenaCanvas.setOnMousePressed(ev -> {
             if (ev.getButton() == MouseButton.PRIMARY) sendJump();
         });
@@ -119,6 +129,10 @@ public class GameController implements Initializable {
                         MainApp.sessionService.updateFromSnapshot(snapshot);
                         MainApp.udpPeer.broadcast(snapshot, MainApp.sessionService.getRemotePeerAddresses());
                     }
+                }
+
+                if (!MainApp.sessionService.isHost() && lastWorldMouseX != 0) {
+                    sendAim(lastWorldMouseX, lastWorldMouseY);
                 }
 
                 updateCamera(dt);
@@ -197,11 +211,12 @@ public class GameController implements Initializable {
             return;
         }
 
-        if (MessageSerializer.SNAPSHOT.equals(messageType) || MessageSerializer.GAME_OVER.equals(messageType)) {
+        if (MessageSerializer.SNAPSHOT.equals(messageType)) {
             MainApp.sessionService.updateFromSnapshot(msg);
-            if (MessageSerializer.GAME_OVER.equals(messageType)) {
-                Platform.runLater(this::onGameOver);
-            }
+            MainApp.eventBus.publish(com.dino.domain.events.EventNames.SNAPSHOT_RECEIVED, msg);
+        } else if (MessageSerializer.GAME_OVER.equals(messageType)) {
+            MainApp.sessionService.updateFromSnapshot(msg);
+            Platform.runLater(this::onGameOver);
         }
     }
 
