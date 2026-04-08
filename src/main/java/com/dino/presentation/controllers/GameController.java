@@ -1,6 +1,6 @@
 package com.dino.presentation.controllers;
 
-import com.dino.MainApp;
+import com.dino.application.runtime.AppContext;
 import com.dino.config.GameConfig;
 import com.dino.domain.entities.ButtonSwitch;
 import com.dino.domain.entities.CollectibleItem;
@@ -16,9 +16,7 @@ import com.dino.presentation.render.PixelArtTheme;
 import javafx.animation.AnimationTimer;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
-import javafx.fxml.FXMLLoader;
 import javafx.fxml.Initializable;
-import javafx.scene.Scene;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.control.Label;
@@ -43,7 +41,7 @@ import java.util.ResourceBundle;
  * snapshots; cuando es cliente, consume snapshots y refleja el estado
  * replicado.</p>
  */
-public class GameController implements Initializable {
+public class GameController implements Initializable, AppContextAware {
     @FXML private Canvas arenaCanvas;
     @FXML private Label timerLabel;
     @FXML private Label levelLabel;
@@ -54,11 +52,14 @@ public class GameController implements Initializable {
     @FXML private ListView<String> eventLog;
     @FXML private Label feedbackLabel;
 
-    private static final double SNAPSHOT_INTERVAL = 1.0 / 20.0;
+    /**
+     * Intervalo de envío de snapshots derivado directamente de la configuración
+     * global para evitar divergencias entre documentación y runtime.
+     */
+    private static final double SNAPSHOT_INTERVAL = 1.0 / GameConfig.SNAPSHOT_RATE_HZ;
     private static final double CAMERA_SMOOTHING = 0.16;
     private static final double FEEDBACK_DURATION_SECONDS = 1.4;
 
-    private final MessageSerializer serializer = new MessageSerializer();
     private AnimationTimer gameLoop;
     private long lastNano = 0;
     private double snapshotTimer = 0;
@@ -69,19 +70,26 @@ public class GameController implements Initializable {
     private double lastWorldMouseX = 0;
     private double lastWorldMouseY = 0;
     private InetAddress hostAddress;
+    private boolean gameOverSceneOpened = false;
+    private AppContext appContext;
+
+    @Override
+    public void setAppContext(AppContext appContext) {
+        this.appContext = appContext;
+    }
 
     @Override
     public void initialize(URL url, ResourceBundle rb) {
-        MainApp.eventBus.subscribe(EventNames.SNAPSHOT_RECEIVED, e -> Platform.runLater(this::refreshUI));
-        MainApp.eventBus.subscribe(EventNames.GAME_OVER, e -> {
-            if (MainApp.sessionService.isHost()) broadcastGameOver();
+        appContext.events().subscribe(EventNames.SNAPSHOT_RECEIVED, e -> Platform.runLater(this::refreshUI));
+        appContext.events().subscribe(EventNames.GAME_OVER, e -> {
+            if (appContext.session().isHost()) broadcastGameOver();
             Platform.runLater(this::onGameOver);
         });
-        MainApp.eventBus.subscribe(EventNames.COIN_COLLECTED, e -> onGameplayEvent(e, "Moneda recogida", "#ffd166"));
-        MainApp.eventBus.subscribe(EventNames.PLAYER_JUMPED, e -> onGameplayEvent(e, "Salto", "#8be9fd"));
-        MainApp.eventBus.subscribe(EventNames.ROOM_RESET, e -> Platform.runLater(() ->
+        appContext.events().subscribe(EventNames.COIN_COLLECTED, e -> onGameplayEvent(e, "Moneda recogida", "#ffd166"));
+        appContext.events().subscribe(EventNames.PLAYER_JUMPED, e -> onGameplayEvent(e, "Salto", "#8be9fd"));
+        appContext.events().subscribe(EventNames.ROOM_RESET, e -> Platform.runLater(() ->
             showFeedback(String.valueOf(e.getOrDefault("reason", "Sala reiniciada")), "#ff9f68")));
-        MainApp.eventBus.subscribe(EventNames.LEVEL_ADVANCED, e -> Platform.runLater(() ->
+        appContext.events().subscribe(EventNames.LEVEL_ADVANCED, e -> Platform.runLater(() ->
             showFeedback("Nivel completado", "#80ed99")));
 
         feedbackLabel.setVisible(false);
@@ -102,7 +110,7 @@ public class GameController implements Initializable {
         });
 
         try {
-            hostAddress = InetAddress.getByName(MainApp.sessionService.getHostIp());
+            hostAddress = InetAddress.getByName(appContext.session().getHostIp());
         } catch (Exception e) {
             System.err.println("[GameController] Cannot resolve host IP: " + e.getMessage());
         }
@@ -111,6 +119,14 @@ public class GameController implements Initializable {
         startGameLoop();
     }
 
+    /**
+     * Arranca el loop visual y de red de la partida.
+     *
+     * <p>Cuando la instancia es host, el mismo loop avanza la simulación
+     * autoritativa y publica snapshots a la frecuencia definida en
+     * {@link GameConfig#SNAPSHOT_RATE_HZ}. Cuando es cliente, consume snapshots
+     * y solo envía input.</p>
+     */
     private void startGameLoop() {
         gameLoop = new AnimationTimer() {
             @Override
@@ -123,23 +139,23 @@ public class GameController implements Initializable {
                 double dt = (now - lastNano) / 1_000_000_000.0;
                 lastNano = now;
 
-                if (MainApp.udpPeer != null && MainApp.udpPeer.isBound()) {
+                if (appContext.networkPeer() != null && appContext.networkPeer().isBound()) {
                     pollIncomingMessages();
                 }
 
-                if (MainApp.sessionService.isHost() && MainApp.hostMatchService != null) {
-                    MainApp.hostMatchService.tick(dt);
+                if (appContext.session().isHost() && appContext.hostMatchService() != null) {
+                    appContext.hostMatchService().tick(dt);
                     snapshotTimer += dt;
                     if (snapshotTimer >= SNAPSHOT_INTERVAL) {
                         snapshotTimer = 0;
-                        Map<String, Object> snapshot = MainApp.sessionService.getSnapshotData();
+                        Map<String, Object> snapshot = appContext.session().getSnapshotData();
                         snapshot.put("type", MessageSerializer.SNAPSHOT);
-                        MainApp.sessionService.updateFromSnapshot(snapshot);
-                        MainApp.udpPeer.broadcast(snapshot, MainApp.sessionService.getRemotePeerAddresses());
+                        appContext.session().updateFromSnapshot(snapshot);
+                        appContext.networkPeer().broadcast(snapshot, appContext.session().getRemotePeerAddresses());
                     }
                 }
 
-                if (!MainApp.sessionService.isHost() && lastWorldMouseX != 0) {
+                if (!appContext.session().isHost() && lastWorldMouseX != 0) {
                     sendAim(lastWorldMouseX, lastWorldMouseY);
                 }
 
@@ -153,91 +169,101 @@ public class GameController implements Initializable {
     }
 
     private void sendAim(double worldX, double worldY) {
-        String localPlayerId = MainApp.sessionService.getLocalPlayerId();
+        String localPlayerId = appContext.session().getLocalPlayerId();
         if (localPlayerId == null) return;
 
-        if (MainApp.sessionService.isHost()) {
-            if (MainApp.hostMatchService != null) {
-                MainApp.hostMatchService.handleMoveTarget(localPlayerId, worldX, worldY);
+        if (appContext.session().isHost()) {
+            if (appContext.hostMatchService() != null) {
+                appContext.hostMatchService().handleMoveTarget(localPlayerId, worldX, worldY);
             }
             return;
         }
 
         try {
-            Map<String, Object> msg = serializer.build(
+            Map<String, Object> msg = appContext.serializer().build(
                 MessageSerializer.MOVE_TARGET,
                 "playerId", localPlayerId,
                 "targetX", worldX,
                 "targetY", worldY
             );
-            MainApp.udpPeer.send(msg,
+            appContext.networkPeer().send(msg,
                 hostAddress,
-                MainApp.sessionService.getHostPort());
+                appContext.session().getHostPort());
         } catch (Exception e) {
             System.err.println("[GameController] Aim error: " + e.getMessage());
         }
     }
 
     private void sendJump() {
-        String localPlayerId = MainApp.sessionService.getLocalPlayerId();
+        String localPlayerId = appContext.session().getLocalPlayerId();
         if (localPlayerId == null) return;
 
-        if (MainApp.sessionService.isHost()) {
-            if (MainApp.hostMatchService != null) {
-                MainApp.hostMatchService.handleJump(localPlayerId);
+        if (appContext.session().isHost()) {
+            if (appContext.hostMatchService() != null) {
+                appContext.hostMatchService().handleJump(localPlayerId);
             }
             return;
         }
 
         try {
-            Map<String, Object> msg = serializer.build(
+            Map<String, Object> msg = appContext.serializer().build(
                 MessageSerializer.JUMP,
                 "playerId", localPlayerId
             );
-            MainApp.udpPeer.send(msg,
+            appContext.networkPeer().send(msg,
                 hostAddress,
-                MainApp.sessionService.getHostPort());
+                appContext.session().getHostPort());
         } catch (Exception e) {
             System.err.println("[GameController] Jump error: " + e.getMessage());
         }
     }
 
+    /**
+     * Consume mensajes UDP pendientes hasta vaciar el socket no bloqueante.
+     */
     private void pollIncomingMessages() {
         while (true) {
-            var received = MainApp.udpPeer.receive();
+            var received = appContext.networkPeer().receive();
             if (received.isEmpty()) return;
             handleIncomingMessage(received.get().getKey(), received.get().getValue());
         }
     }
 
+    /**
+     * Enruta mensajes de gameplay según el rol local.
+     */
     private void handleIncomingMessage(Map<String, Object> msg, InetSocketAddress sender) {
         Object type = msg.get("type");
         if (!(type instanceof String messageType)) return;
 
-        if (MainApp.sessionService.isHost()) {
+        if (appContext.session().isHost()) {
             handleHostNetworkMessage(messageType, msg, sender);
             return;
         }
 
         if (MessageSerializer.SNAPSHOT.equals(messageType)) {
-            MainApp.sessionService.updateFromSnapshot(msg);
-            MainApp.eventBus.publish(com.dino.domain.events.EventNames.SNAPSHOT_RECEIVED, msg);
+            appContext.session().updateFromSnapshot(msg);
+            appContext.events().publish(com.dino.domain.events.EventNames.SNAPSHOT_RECEIVED, msg);
         } else if (MessageSerializer.GAME_OVER.equals(messageType)) {
-            MainApp.sessionService.updateFromSnapshot(msg);
+            appContext.session().updateFromSnapshot(msg);
             Platform.runLater(this::onGameOver);
         }
     }
 
+    /**
+     * Procesa únicamente input remoto y desconexiones cuando esta instancia es
+     * el host autoritativo.
+     */
     private void handleHostNetworkMessage(String type, Map<String, Object> msg, InetSocketAddress sender) {
-        if (MainApp.hostMatchService == null) return;
+        if (appContext.hostMatchService() == null) return;
 
         if (MessageSerializer.MOVE_TARGET.equals(type)) {
             String playerId = (String) msg.get("playerId");
             Number targetX = (Number) msg.get("targetX");
             Number targetY = (Number) msg.get("targetY");
             if (playerId != null && targetX != null && targetY != null) {
-                MainApp.sessionService.registerPeerAddress(playerId, sender);
-                MainApp.hostMatchService.handleMoveTarget(playerId, targetX.doubleValue(), targetY.doubleValue());
+                appContext.session().registerPeerAddress(playerId, sender);
+                appContext.hostMatchService().handleMoveTarget(playerId, targetX.doubleValue(), targetY.doubleValue());
             }
             return;
         }
@@ -245,28 +271,35 @@ public class GameController implements Initializable {
         if (MessageSerializer.JUMP.equals(type)) {
             String playerId = (String) msg.get("playerId");
             if (playerId != null) {
-                MainApp.sessionService.registerPeerAddress(playerId, sender);
-                MainApp.hostMatchService.handleJump(playerId);
+                appContext.session().registerPeerAddress(playerId, sender);
+                appContext.hostMatchService().handleJump(playerId);
             }
             return;
         }
 
         if (MessageSerializer.DISCONNECT.equals(type)) {
             String playerId = (String) msg.get("playerId");
-            MainApp.sessionService.markPlayerConnected(playerId, false);
-            MainApp.sessionService.removePeerAddress(playerId);
-            Map<String, Object> snapshot = MainApp.sessionService.getSnapshotData();
+            appContext.session().markPlayerConnected(playerId, false);
+            appContext.session().removePeerAddress(playerId);
+            Map<String, Object> snapshot = appContext.session().getSnapshotData();
             snapshot.put("type", MessageSerializer.SNAPSHOT);
-            MainApp.sessionService.updateFromSnapshot(snapshot);
-            MainApp.udpPeer.broadcast(snapshot, MainApp.sessionService.getRemotePeerAddresses());
+            appContext.session().updateFromSnapshot(snapshot);
+            appContext.networkPeer().broadcast(snapshot, appContext.session().getRemotePeerAddresses());
         }
     }
 
+    /**
+     * Difunde el cierre de partida con una ráfaga corta de UDP.
+     *
+     * <p>Esto mejora la entrega de una transición crítica sin convertir el
+     * protocolo en un sistema confiable completo con ACK.</p>
+     */
     private void broadcastGameOver() {
-        if (MainApp.udpPeer == null || !MainApp.udpPeer.isBound()) return;
-        Map<String, Object> payload = MainApp.sessionService.getSnapshotData();
+        if (appContext.networkPeer() == null || !appContext.networkPeer().isBound()) return;
+        Map<String, Object> payload = appContext.session().getSnapshotData();
         payload.put("type", MessageSerializer.GAME_OVER);
-        MainApp.udpPeer.broadcast(payload, MainApp.sessionService.getRemotePeerAddresses());
+        appContext.networkPeer().broadcastBurst(payload, appContext.session().getRemotePeerAddresses(),
+            GameConfig.CRITICAL_BROADCAST_REPEATS, GameConfig.CRITICAL_BROADCAST_DELAY_MS);
     }
 
     private double canvasToWorldX(double canvasX) {
@@ -279,6 +312,9 @@ public class GameController implements Initializable {
         return cameraY + (canvasY / scaleY);
     }
 
+    /**
+     * Redibuja el estado visible del mundo a partir del snapshot local.
+     */
     private void render() {
         double canvasWidth = arenaCanvas.getWidth();
         double canvasHeight = arenaCanvas.getHeight();
@@ -286,8 +322,8 @@ public class GameController implements Initializable {
         double viewportHeight = getViewportWorldHeight();
         double scaleX = canvasWidth / viewportWidth;
         double scaleY = canvasHeight / viewportHeight;
-        int tileSize = Math.max(16, MainApp.sessionService.getCurrentTileSize());
-        PixelArtTheme.Palette palette = PixelArtTheme.paletteFor(MainApp.sessionService.getCurrentBackground());
+        int tileSize = Math.max(16, appContext.session().getCurrentTileSize());
+        PixelArtTheme.Palette palette = PixelArtTheme.paletteFor(appContext.session().getCurrentBackground());
 
         GraphicsContext gc = arenaCanvas.getGraphicsContext2D();
         drawBackground(gc, palette, canvasWidth, canvasHeight, scaleX, scaleY, tileSize);
@@ -308,40 +344,40 @@ public class GameController implements Initializable {
         gc.strokeRect(worldToScreenX(0, scaleX), worldToScreenY(0, scaleY),
             GameConfig.LEVEL_WIDTH * scaleX, GameConfig.LEVEL_HEIGHT * scaleY);
 
-        for (PlatformTile platform : MainApp.sessionService.getPlatformsSnapshot()) {
+        for (PlatformTile platform : appContext.session().getPlatformsSnapshot()) {
             drawPlatform(gc, platform, scaleX, scaleY, palette, false);
         }
 
-        for (PlatformTile platform : MainApp.sessionService.getSpecialPlatformsSnapshot()) {
+        for (PlatformTile platform : appContext.session().getSpecialPlatformsSnapshot()) {
             drawPlatform(gc, platform, scaleX, scaleY, palette, true);
         }
 
-        for (PlatformTile hazard : MainApp.sessionService.getHazardsSnapshot()) {
+        for (PlatformTile hazard : appContext.session().getHazardsSnapshot()) {
             drawHazard(gc, hazard, scaleX, scaleY, palette);
         }
 
-        for (PlatformTile checkpoint : MainApp.sessionService.getCheckpointsSnapshot()) {
+        for (PlatformTile checkpoint : appContext.session().getCheckpointsSnapshot()) {
             drawCheckpoint(gc, checkpoint, scaleX, scaleY, palette);
         }
 
-        for (PushBlock block : MainApp.sessionService.getPushBlocksSnapshot()) {
+        for (PushBlock block : appContext.session().getPushBlocksSnapshot()) {
             drawPushBlock(gc, block, scaleX, scaleY, palette);
         }
 
-        ButtonSwitch button = MainApp.sessionService.getButtonSwitchSnapshot();
+        ButtonSwitch button = appContext.session().getButtonSwitchSnapshot();
         if (button != null) drawButton(gc, button, scaleX, scaleY, palette);
 
-        Door door = MainApp.sessionService.getDoorSnapshot();
+        Door door = appContext.session().getDoorSnapshot();
         if (door != null) drawDoor(gc, door, scaleX, scaleY, palette);
 
-        ExitZone exitZone = MainApp.sessionService.getExitZoneSnapshot();
+        ExitZone exitZone = appContext.session().getExitZoneSnapshot();
         if (exitZone != null) drawExit(gc, exitZone, scaleX, scaleY, palette);
 
-        for (CollectibleItem coin : MainApp.sessionService.getCoinsSnapshot()) {
+        for (CollectibleItem coin : appContext.session().getCoinsSnapshot()) {
             if (coin.isActive()) drawCoin(gc, coin, scaleX, scaleY, palette);
         }
 
-        List<Player> allPlayers = MainApp.sessionService.getPlayersSnapshot();
+        List<Player> allPlayers = appContext.session().getPlayersSnapshot();
         drawThread(gc, allPlayers, scaleX, scaleY);
 
         Player localPlayer = getLocalPlayerSnapshot();
@@ -397,7 +433,7 @@ public class GameController implements Initializable {
     private void drawBackground(GraphicsContext gc, PixelArtTheme.Palette palette,
                                 double canvasWidth, double canvasHeight, double scaleX, double scaleY,
                                 int tileSize) {
-        String biome = MainApp.sessionService.getCurrentBackground();
+        String biome = appContext.session().getCurrentBackground();
         if (biome == null) biome = "default";
 
         gc.setFill(palette.backgroundFar());
@@ -735,37 +771,44 @@ public class GameController implements Initializable {
     }
 
     private void updateTimer() {
-        timerLabel.setText(String.format("Tiempo: %.1fs", MainApp.sessionService.getElapsedTime()));
+        timerLabel.setText(String.format("Tiempo: %.1fs", appContext.session().getElapsedTime()));
     }
 
+    /**
+     * Sincroniza HUD, ranking y estado textual a partir de la sesión actual.
+     */
     private void refreshUI() {
         playersList.getItems().clear();
-        MainApp.scoreBoardObserver.getEntries().forEach(player ->
+        appContext.scoreBoard().getEntries().forEach(player ->
             playersList.getItems().add(player.getName() + "  " + player.getScore() + " pts"));
 
-        eventLog.getItems().setAll(MainApp.eventLogObserver.getEntries());
+        eventLog.getItems().setAll(appContext.eventLog().getEntries());
 
-        int currentLevel = MainApp.sessionService.getCurrentLevelIndex() + 1;
-        int totalLevels = Math.max(1, MainApp.sessionService.getTotalLevels());
-        String levelName = MainApp.sessionService.getCurrentLevelName();
+        int currentLevel = appContext.session().getCurrentLevelIndex() + 1;
+        int totalLevels = Math.max(1, appContext.session().getTotalLevels());
+        String levelName = appContext.session().getCurrentLevelName();
         levelLabel.setText((levelName == null || levelName.isBlank() ? "Nivel " + currentLevel : levelName)
             + "  " + currentLevel + "/" + totalLevels);
 
-        String roomReason = MainApp.sessionService.getRoomResetReason();
+        String roomReason = appContext.session().getRoomResetReason();
         roomStatusLabel.setText(roomReason == null || roomReason.isBlank()
             ? "Llega a la meta evitando hazards"
             : roomReason);
 
         threadLabel.setText(String.format("Hilo maximo: %.0f px", GameConfig.THREAD_HARD_LIMIT));
-        networkLabel.setText(MainApp.sessionService.isHost() ? "Host autoritativo" : "Cliente sincronizado");
+        networkLabel.setText(appContext.session().isHost() ? "Host autoritativo" : "Cliente sincronizado");
     }
 
+    /**
+     * Abre la pantalla final una sola vez, incluso si llegan varios
+     * {@code GAME_OVER} repetidos por la ráfaga UDP.
+     */
     private void onGameOver() {
+        if (gameOverSceneOpened) return;
+        gameOverSceneOpened = true;
         if (gameLoop != null) gameLoop.stop();
         try {
-            FXMLLoader loader = new FXMLLoader(getClass().getResource("/com.dino.views/game_over.fxml"));
-            Scene scene = new Scene(loader.load(), 1280, 780);
-            MainApp.getStage().setScene(scene);
+            appContext.navigator().showGameOver();
         } catch (Exception e) {
             System.err.println("[GameController] Game over: " + e.getMessage());
         }
@@ -812,14 +855,14 @@ public class GameController implements Initializable {
     }
 
     private boolean isLocalPlayerEvent(Map<String, Object> payload, String key) {
-        String localId = MainApp.sessionService.getLocalPlayerId();
+        String localId = appContext.session().getLocalPlayerId();
         return localId != null && localId.equals(payload.get(key));
     }
 
     private Player getLocalPlayerSnapshot() {
-        String localId = MainApp.sessionService.getLocalPlayerId();
+        String localId = appContext.session().getLocalPlayerId();
         if (localId == null) return null;
-        List<Player> players = MainApp.sessionService.getPlayersSnapshot();
+        List<Player> players = appContext.session().getPlayersSnapshot();
         for (Player player : players) {
             if (localId.equals(player.getId())) return player;
         }

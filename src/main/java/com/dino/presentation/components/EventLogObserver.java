@@ -1,6 +1,6 @@
 package com.dino.presentation.components;
 
-import com.dino.application.services.EventBus;
+import com.dino.application.services.EventChannel;
 import com.dino.domain.events.EventNames;
 
 import java.util.*;
@@ -22,7 +22,7 @@ public class EventLogObserver {
      *
      * @param eventBus bus de eventos interno de la aplicación
      */
-    public EventLogObserver(EventBus eventBus) {
+    public EventLogObserver(EventChannel eventBus) {
         eventBus.subscribe(EventNames.COIN_COLLECTED, e -> {
             String player = (String) e.getOrDefault("playerId", "?");
             int pts = e.containsKey("points") ? ((Number) e.get("points")).intValue() : 0;

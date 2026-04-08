@@ -12,7 +12,7 @@ import java.util.function.Consumer;
  * refleja y el audio reproduce sonidos sin que unas clases conozcan a las
  * otras.</p>
  */
-public class EventBus {
+public class EventBus implements EventChannel {
     private final Map<String, List<Consumer<Map<String, Object>>>> subscribers = new HashMap<>();
     private final ReentrantLock lock = new ReentrantLock();
 

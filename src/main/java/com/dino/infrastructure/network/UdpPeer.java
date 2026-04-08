@@ -16,7 +16,7 @@ import java.util.*;
  * proyecto. No implementa reglas de juego ni sincronización avanzada; solo
  * transporte.</p>
  */
-public class UdpPeer {
+public class UdpPeer implements NetworkPeer {
     private DatagramSocket socket;
     private final ObjectMapper mapper = new ObjectMapper();
     private static final int BUFFER_SIZE = 65535;
@@ -77,13 +77,15 @@ public class UdpPeer {
      *
      * @param data mensaje a reenviar
      * @param addrs peers destino
-     * @param repeats cantidad de repeticiones
+     * @param repeats cantidad total de emisiones, incluida la primera
      * @param delayMs pausa entre repeticiones
      */
     public void broadcastBurst(Map<String, Object> data, List<InetSocketAddress> addrs, int repeats, int delayMs) {
         if (repeats <= 0) return;
+        broadcast(data, addrs);
+        if (repeats == 1) return;
         Thread.ofPlatform().daemon(true).start(() -> {
-            for (int i = 0; i < repeats; i++) {
+            for (int i = 1; i < repeats; i++) {
                 broadcast(data, addrs);
                 if (i + 1 < repeats) {
                     try {

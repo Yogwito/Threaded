@@ -10,8 +10,8 @@ import java.util.Map;
  * Serializador y fábrica básica de mensajes de red.
  *
  * <p>Convierte mapas a JSON y viceversa usando Jackson. También concentra los
- * tipos de mensaje del protocolo UDP para que host y cliente hablen el mismo
- * lenguaje.</p>
+ * tipos de mensaje del protocolo UDP realmente usados por host y clientes para
+ * que ambos hablen el mismo lenguaje.</p>
  */
 public class MessageSerializer {
     private final ObjectMapper mapper = new ObjectMapper();
@@ -26,8 +26,6 @@ public class MessageSerializer {
     public static final String JUMP           = "JUMP";
     public static final String SNAPSHOT       = "SNAPSHOT";
     public static final String GAME_EVENT     = "GAME_EVENT";
-    public static final String HEARTBEAT      = "HEARTBEAT";
-    public static final String ACK            = "ACK";
     public static final String DISCONNECT     = "DISCONNECT";
     public static final String GAME_OVER      = "GAME_OVER";
 

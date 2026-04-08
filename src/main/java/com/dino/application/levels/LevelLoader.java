@@ -77,6 +77,9 @@ public final class LevelLoader {
         }
     }
 
+    /**
+     * Parsea metadata y matriz de tiles desde el flujo del recurso.
+     */
     private static LevelData parse(InputStream stream, String resourcePath) throws IOException {
         BufferedReader reader = new BufferedReader(new InputStreamReader(stream, StandardCharsets.UTF_8));
         String name = defaultName(resourcePath);
@@ -181,6 +184,9 @@ public final class LevelLoader {
         );
     }
 
+    /**
+     * Deriva un nombre legible del archivo cuando el nivel no trae metadata.
+     */
     private static String defaultName(String resourcePath) {
         String fileName = resourcePath.substring(resourcePath.lastIndexOf('/') + 1);
         int dot = fileName.lastIndexOf('.');

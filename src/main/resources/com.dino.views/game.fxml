@@ -23,16 +23,16 @@
                    text="Tiempo: 0.0s"
                    style="-fx-text-fill: #e8dfcf; -fx-font-size: 14px; -fx-font-family: 'Monospaced';"/>
             <Label fx:id="levelLabel"
-                   text="Nivel 1/5"
+                   text="Nivel 1/N"
                    style="-fx-text-fill: #e8dfcf; -fx-font-size: 14px; -fx-font-family: 'Monospaced';"/>
             <Label fx:id="roomStatusLabel"
                    text="Llega a la meta evitando hazards"
                    style="-fx-text-fill: #d1a35b; -fx-font-size: 14px; -fx-font-family: 'Monospaced';"/>
             <Label fx:id="threadLabel"
-                   text="Hilo maximo: 240 px"
+                   text="Hilo maximo: --"
                    style="-fx-text-fill: #b8ad9a; -fx-font-size: 14px; -fx-font-family: 'Monospaced';"/>
             <Label fx:id="networkLabel"
-                   text="UDP estable"
+                   text="UDP host autoritativo"
                    style="-fx-text-fill: #b8ad9a; -fx-font-size: 14px; -fx-font-family: 'Monospaced';"/>
         </HBox>
     </top>
@@ -56,7 +56,7 @@
             <Label text="Eventos"
                    style="-fx-text-fill: #e8dfcf; -fx-font-size: 15px; -fx-font-weight: bold; -fx-font-family: 'Monospaced';"/>
             <ListView fx:id="eventLog" VBox.vgrow="ALWAYS"/>
-            <Label text="Controles: mueve el mouse para apuntar la direccion del personaje y click izquierdo para saltar. Los bloques, hazards y metas siguen una lectura de tile clara en los 5 niveles."
+            <Label text="Controles: mueve el mouse para apuntar la direccion del personaje y click izquierdo para saltar. Los bloques, hazards y metas siguen una lectura de tile clara en toda la campana."
                    wrapText="true"
                    style="-fx-text-fill: #b8ad9a; -fx-font-size: 12px; -fx-font-family: 'Monospaced';"/>
         </VBox>

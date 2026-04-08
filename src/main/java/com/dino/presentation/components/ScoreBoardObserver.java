@@ -1,6 +1,6 @@
 package com.dino.presentation.components;
 
-import com.dino.application.services.EventBus;
+import com.dino.application.services.EventChannel;
 import com.dino.domain.entities.Player;
 import com.dino.domain.events.EventNames;
 
@@ -22,7 +22,7 @@ public class ScoreBoardObserver {
      *
      * @param eventBus bus de eventos global de la aplicación
      */
-    public ScoreBoardObserver(EventBus eventBus) {
+    public ScoreBoardObserver(EventChannel eventBus) {
         eventBus.subscribe(EventNames.SNAPSHOT_RECEIVED, this::onSnapshot);
         eventBus.subscribe(EventNames.GAME_OVER,         this::onSnapshot);
     }

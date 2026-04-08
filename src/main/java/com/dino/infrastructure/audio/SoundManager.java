@@ -1,6 +1,6 @@
 package com.dino.infrastructure.audio;
 
-import com.dino.application.services.EventBus;
+import com.dino.application.services.EventChannel;
 import com.dino.domain.events.EventNames;
 
 import javax.sound.sampled.AudioFormat;
@@ -11,7 +11,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 /**
  * Gestor de audio procedural del juego.
  *
- * <p>No depende de archivos externos. Escucha eventos del {@link EventBus} y
+ * <p>No depende de archivos externos. Escucha eventos de un {@link EventChannel} y
  * genera tonos y acordes sencillos con Java Sound para maximizar portabilidad
  * en distintos equipos de laboratorio.</p>
  */
@@ -26,7 +26,7 @@ public class SoundManager {
      *
      * @param eventBus bus de eventos compartido
      */
-    public SoundManager(EventBus eventBus) {
+    public SoundManager(EventChannel eventBus) {
         eventBus.subscribe(EventNames.GAME_STARTED, e -> {
             startBackgroundMusic();
             playCartoonChord(new int[]{392, 523}, 180, 0.34, 0.10);

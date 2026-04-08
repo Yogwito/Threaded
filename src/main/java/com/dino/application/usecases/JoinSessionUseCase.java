@@ -1,10 +1,10 @@
 package com.dino.application.usecases;
 
-import com.dino.application.services.EventBus;
+import com.dino.application.services.EventPublisher;
 import com.dino.application.services.SessionService;
 import com.dino.domain.entities.Player;
 import com.dino.domain.events.EventNames;
-import com.dino.infrastructure.network.UdpPeer;
+import com.dino.infrastructure.network.NetworkPeer;
 import com.dino.infrastructure.serialization.MessageSerializer;
 
 import java.net.InetAddress;
@@ -19,9 +19,9 @@ import java.util.UUID;
  */
 public class JoinSessionUseCase {
     private final SessionService sessionService;
-    private final UdpPeer udpPeer;
+    private final NetworkPeer udpPeer;
     private final MessageSerializer serializer;
-    private final EventBus eventBus;
+    private final EventPublisher eventBus;
 
     /**
      * Construye el caso de uso con acceso al estado, red y serialización.
@@ -31,8 +31,8 @@ public class JoinSessionUseCase {
      * @param serializer serializador de mensajes de red
      * @param eventBus bus de eventos interno
      */
-    public JoinSessionUseCase(SessionService sessionService, UdpPeer udpPeer,
-                               MessageSerializer serializer, EventBus eventBus) {
+    public JoinSessionUseCase(SessionService sessionService, NetworkPeer udpPeer,
+                               MessageSerializer serializer, EventPublisher eventBus) {
         this.sessionService = sessionService;
         this.udpPeer = udpPeer;
         this.serializer = serializer;
