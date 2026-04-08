@@ -15,7 +15,9 @@ public enum TileType {
     SPECIAL_PLATFORM(4),
     HAZARD(5),
     CHECKPOINT(6),
-    GOAL(7);
+    GOAL(7),
+    COIN_SMALL(8),
+    COIN_LARGE(9);
 
     private final int code;
 

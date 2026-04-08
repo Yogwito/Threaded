@@ -22,6 +22,7 @@ public class LevelData {
     private final List<Platform> hazards;
     private final List<Platform> checkpoints;
     private final List<Platform> goals;
+    private final List<Coin> coins;
 
     /**
      * Construye una vista inmutable del nivel parseado.
@@ -46,7 +47,8 @@ public class LevelData {
                      List<double[]> spawnPoints,
                      List<Platform> hazards,
                      List<Platform> checkpoints,
-                     List<Platform> goals) {
+                     List<Platform> goals,
+                     List<Coin> coins) {
         this.name = name;
         this.background = background;
         this.tileSize = tileSize;
@@ -57,6 +59,7 @@ public class LevelData {
         this.hazards = Collections.unmodifiableList(new ArrayList<>(hazards));
         this.checkpoints = Collections.unmodifiableList(new ArrayList<>(checkpoints));
         this.goals = Collections.unmodifiableList(new ArrayList<>(goals));
+        this.coins = Collections.unmodifiableList(new ArrayList<>(coins));
     }
 
     /** @return nombre visible del nivel */
@@ -79,6 +82,8 @@ public class LevelData {
     public List<Platform> getCheckpoints() { return checkpoints; }
     /** @return metas de salida del nivel */
     public List<Platform> getGoals() { return goals; }
+    /** @return monedas coleccionables del nivel */
+    public List<Coin> getCoins() { return coins; }
 
     private static List<double[]> copyPoints(List<double[]> points) {
         List<double[]> copy = new ArrayList<>();

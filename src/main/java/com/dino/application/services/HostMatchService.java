@@ -1,6 +1,7 @@
 package com.dino.application.services;
 
 import com.dino.application.levels.Box;
+import com.dino.application.levels.Coin;
 import com.dino.application.levels.LevelData;
 import com.dino.application.levels.LevelLoader;
 import com.dino.application.levels.Platform;
@@ -709,6 +710,17 @@ public class HostMatchService {
         sessionService.setButtonSwitch(null);
         sessionService.setDoor(null);
         sessionService.setExitZone(createExitZone(levelData.getGoals()));
+
+        double coinOffset = (levelData.getTileSize() - GameConfig.COIN_SIZE) / 2.0;
+        int coinIndex = 0;
+        for (Coin coin : levelData.getCoins()) {
+            sessionService.getCoins().add(new CollectibleItem(
+                "coin_" + coinIndex++,
+                coin.getX() + coinOffset,
+                coin.getY() + coinOffset,
+                coin.getPoints()
+            ));
+        }
     }
 
     private ExitZone createExitZone(List<Platform> goals) {

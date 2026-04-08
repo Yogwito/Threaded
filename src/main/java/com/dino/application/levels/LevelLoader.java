@@ -130,6 +130,7 @@ public final class LevelLoader {
         List<Platform> hazards = new ArrayList<>();
         List<Platform> checkpoints = new ArrayList<>();
         List<Platform> goals = new ArrayList<>();
+        List<Coin> coins = new ArrayList<>();
 
         for (int rowIndex = 0; rowIndex < rows.size(); rowIndex++) {
             int[] row = rows.get(rowIndex);
@@ -152,6 +153,8 @@ public final class LevelLoader {
                     case HAZARD -> hazards.add(new Platform(worldX, worldY, tileSize, tileSize));
                     case CHECKPOINT -> checkpoints.add(new Platform(worldX, worldY, tileSize, tileSize));
                     case GOAL -> goals.add(new Platform(worldX, worldY, tileSize, tileSize));
+                    case COIN_SMALL -> coins.add(new Coin(worldX, worldY, GameConfig.SCORE_COIN_SMALL));
+                    case COIN_LARGE -> coins.add(new Coin(worldX, worldY, GameConfig.SCORE_COIN_LARGE));
                 }
             }
         }
@@ -173,7 +176,8 @@ public final class LevelLoader {
             spawnPoints,
             hazards,
             checkpoints,
-            goals
+            goals,
+            coins
         );
     }
 

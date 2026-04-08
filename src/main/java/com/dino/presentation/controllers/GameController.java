@@ -318,11 +318,59 @@ public class GameController implements Initializable {
             if (coin.isActive()) drawCoin(gc, coin, scaleX, scaleY, palette);
         }
 
+        List<Player> allPlayers = MainApp.sessionService.getPlayersSnapshot();
+        drawThread(gc, allPlayers, scaleX, scaleY);
+
         Player localPlayer = getLocalPlayerSnapshot();
         int playerIndex = 0;
-        for (Player player : MainApp.sessionService.getPlayersSnapshot()) {
+        for (Player player : allPlayers) {
             if (!player.isConnected()) continue;
             drawPlayer(gc, player, localPlayer, playerIndex++, scaleX, scaleY, palette);
+        }
+    }
+
+    private void drawThread(GraphicsContext gc, List<Player> players, double scaleX, double scaleY) {
+        List<Player> connected = players.stream()
+            .filter(p -> p.isConnected() && p.isAlive())
+            .sorted((a, b) -> Double.compare(a.getX(), b.getX()))
+            .toList();
+
+        for (int i = 0; i < connected.size() - 1; i++) {
+            Player a = connected.get(i);
+            Player b = connected.get(i + 1);
+
+            double ax = worldToScreenX(a.getCenterX(), scaleX);
+            double ay = worldToScreenY(a.getCenterY(), scaleY);
+            double bx = worldToScreenX(b.getCenterX(), scaleX);
+            double by = worldToScreenY(b.getCenterY(), scaleY);
+
+            double dx = b.getCenterX() - a.getCenterX();
+            double dy = b.getCenterY() - a.getCenterY();
+            double dist = Math.sqrt(dx * dx + dy * dy);
+
+            Color threadColor;
+            double lineWidth;
+            if (dist >= GameConfig.THREAD_CRITICAL_DISTANCE) {
+                threadColor = Color.web("#e05555");
+                lineWidth = 3.0;
+            } else if (dist >= GameConfig.THREAD_TENSE_DISTANCE) {
+                threadColor = Color.web("#e0a030");
+                lineWidth = 2.5;
+            } else if (dist >= GameConfig.THREAD_REST_DISTANCE) {
+                threadColor = Color.web("#d4c87a");
+                lineWidth = 2.0;
+            } else {
+                threadColor = Color.web("#8ab06e", 0.7);
+                lineWidth = 1.5;
+            }
+
+            gc.setStroke(PixelArtTheme.INK.deriveColor(0, 1, 1, 0.5));
+            gc.setLineWidth(lineWidth + 2);
+            gc.strokeLine(ax, ay, bx, by);
+
+            gc.setStroke(threadColor);
+            gc.setLineWidth(lineWidth);
+            gc.strokeLine(ax, ay, bx, by);
         }
     }
 
