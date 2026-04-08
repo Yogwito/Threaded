@@ -52,6 +52,12 @@
                 <version>0.0.8</version>
                 <configuration>
                     <mainClass>com.dino.MainApp</mainClass>
+                    <jvmArgs>
+                        <jvmArg>-Djava.net.preferIPv4Stack=true</jvmArg>
+                        <jvmArg>-Djava.net.preferIPv4Addresses=true</jvmArg>
+                        <jvmArg>-Dprism.allowhidpi=false</jvmArg>
+                        <jvmArg>-Dglass.win.uiScale=1.0</jvmArg>
+                    </jvmArgs>
                 </configuration>
             </plugin>
         </plugins>

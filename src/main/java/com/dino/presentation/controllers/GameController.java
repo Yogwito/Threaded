@@ -67,6 +67,7 @@ public class GameController implements Initializable {
     private double currentZoom = GameConfig.BASE_ZOOM;
     private double lastWorldMouseX = 0;
     private double lastWorldMouseY = 0;
+    private InetAddress hostAddress;
 
     @Override
     public void initialize(URL url, ResourceBundle rb) {
@@ -98,6 +99,12 @@ public class GameController implements Initializable {
         arenaCanvas.setOnMousePressed(ev -> {
             if (ev.getButton() == MouseButton.PRIMARY) sendJump();
         });
+
+        try {
+            hostAddress = InetAddress.getByName(MainApp.sessionService.getHostIp());
+        } catch (Exception e) {
+            System.err.println("[GameController] Cannot resolve host IP: " + e.getMessage());
+        }
 
         refreshUI();
         startGameLoop();
@@ -163,7 +170,7 @@ public class GameController implements Initializable {
                 "targetY", worldY
             );
             MainApp.udpPeer.send(msg,
-                InetAddress.getByName(MainApp.sessionService.getHostIp()),
+                hostAddress,
                 MainApp.sessionService.getHostPort());
         } catch (Exception e) {
             System.err.println("[GameController] Aim error: " + e.getMessage());
@@ -187,7 +194,7 @@ public class GameController implements Initializable {
                 "playerId", localPlayerId
             );
             MainApp.udpPeer.send(msg,
-                InetAddress.getByName(MainApp.sessionService.getHostIp()),
+                hostAddress,
                 MainApp.sessionService.getHostPort());
         } catch (Exception e) {
             System.err.println("[GameController] Jump error: " + e.getMessage());

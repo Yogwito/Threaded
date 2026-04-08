@@ -4,6 +4,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
 import java.net.*;
+import java.net.Inet4Address;
+import java.net.InetSocketAddress;
 import java.util.*;
 
 /**
@@ -29,12 +31,14 @@ public class UdpPeer {
      * @throws IOException si el socket no puede abrirse
      */
     public void bind(String ip, int port) throws IOException {
+        socket = new DatagramSocket(null);
+        socket.setReuseAddress(true);
         if (ip == null || ip.isBlank() || ip.equals("0.0.0.0")) {
-            socket = new DatagramSocket(port);
+            socket.bind(new InetSocketAddress(Inet4Address.getByName("0.0.0.0"), port));
         } else {
-            socket = new DatagramSocket(port, InetAddress.getByName(ip));
+            socket.bind(new InetSocketAddress(Inet4Address.getByName(ip), port));
         }
-        socket.setSoTimeout(1); // 1ms timeout for near-non-blocking receive
+        socket.setSoTimeout(1);
     }
 
     /**
