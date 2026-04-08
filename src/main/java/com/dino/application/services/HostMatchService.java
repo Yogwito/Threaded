@@ -160,8 +160,6 @@ public class HostMatchService {
         InputState input = playerInputs.computeIfAbsent(player.getId(), ignored -> new InputState());
         double previousX = player.getX();
         double previousY = player.getY();
-        double previousVx = player.getVx();
-        double previousVy = player.getVy();
         double moveDirection = 0;
         if (input.hasTarget) {
             double dx = input.targetX - player.getCenterX();
@@ -225,12 +223,15 @@ public class HostMatchService {
         }
 
         clampPlayer(player);
-        if (GameRules.violatesThreadDistance(player, sessionService.getPlayers().values())) {
+        if (GameRules.violatesAdjacentThreadHardLimit(player, sessionService.getPlayers().values())) {
             player.setX(previousX);
             player.setY(previousY);
-            player.setVx(0);
-            // Damp but don't zero vy: zeroing it caused "floating" jitter (gravity re-adds vy every frame)
-            player.setVy(player.getVy() * 0.4);
+            cancelSeparatingVelocityAgainstThreadNeighbors(player);
+            player.setVx(player.getVx() * 0.85);
+            player.setVy(player.getVy() * 0.6);
+            clampPlayer(player);
+            resolveHorizontalCollisions(player);
+            resolveVerticalCollisions(player);
         }
     }
 
@@ -320,10 +321,9 @@ public class HostMatchService {
     }
 
     private void applyThreadElasticity(List<Player> players, double dt) {
-        List<Player> connected = players.stream()
-            .filter(player -> player.isConnected() && player.isAlive())
-            .sorted((a, b) -> Double.compare(a.getX(), b.getX()))
-            .toList();
+        List<Player> connected = GameRules.getConnectedPlayersInThreadOrder(players);
+        double tickScale = Math.max(0.6, Math.min(1.4, dt * GameConfig.FPS));
+        double correctionBudget = GameConfig.THREAD_MAX_POSITION_CORRECTION_PER_TICK * tickScale;
 
         for (int i = 0; i < connected.size() - 1; i++) {
             Player a = connected.get(i);
@@ -331,66 +331,149 @@ public class HostMatchService {
             double dx = b.getCenterX() - a.getCenterX();
             double dy = b.getCenterY() - a.getCenterY();
             double distance = Math.sqrt(dx * dx + dy * dy);
-            if (distance <= GameConfig.THREAD_REST_DISTANCE || distance == 0) continue;
+            if (distance == 0 || distance <= GameConfig.THREAD_REST_DISTANCE) continue;
 
-            double stretch = distance - GameConfig.THREAD_REST_DISTANCE;
             double nx = dx / distance;
             double ny = dy / distance;
+            double stretchFromRest = distance - GameConfig.THREAD_REST_DISTANCE;
+            double softStretch = Math.max(0, Math.min(distance, GameConfig.THREAD_MAX_DISTANCE) - GameConfig.THREAD_REST_DISTANCE);
+            double hardStretch = Math.max(0, Math.min(distance, GameConfig.THREAD_HARD_LIMIT) - GameConfig.THREAD_MAX_DISTANCE);
             double relativeVelocity = (b.getVx() - a.getVx()) * nx + (b.getVy() - a.getVy()) * ny;
-            double springForce = stretch * GameConfig.THREAD_PULL_FACTOR;
-            double dampingForce = relativeVelocity * GameConfig.THREAD_DAMPING;
-            // El hilo funciona como resorte amortiguado: corrige sin teletransportar.
-            double pull = Math.min(Math.max(0, (springForce - dampingForce) * dt), stretch * 0.65);
+            double separatingSpeed = Math.max(0, relativeVelocity);
+            double closingSpeed = Math.max(0, -relativeVelocity);
+            boolean obstructed = GameRules.isThreadObstructed(a, b,
+                sessionService.getPlatforms(), sessionService.getDoor(), sessionService.getPushBlocks(),
+                GameConfig.THREAD_OBSTRUCTION_MARGIN);
 
-            double aMobility = a.isGrounded() ? 0.42 : 0.58;
-            double bMobility = b.isGrounded() ? 0.42 : 0.58;
+            double aMobility = threadMobility(a);
+            double bMobility = threadMobility(b);
             double totalMobility = aMobility + bMobility;
-            double aShare = totalMobility == 0 ? 0.5 : bMobility / totalMobility;
-            double bShare = totalMobility == 0 ? 0.5 : aMobility / totalMobility;
+            double aShare = totalMobility == 0 ? 0.5 : aMobility / totalMobility;
+            double bShare = totalMobility == 0 ? 0.5 : bMobility / totalMobility;
 
-            if (stretch > 8 && threadSoundCooldownRemaining <= 0) {
+            if (stretchFromRest > 8 && threadSoundCooldownRemaining <= 0) {
                 threadSoundCooldownRemaining = THREAD_SOUND_COOLDOWN;
                 eventBus.publish(EventNames.THREAD_STRETCHED, Map.of(
                     "playerA", a.getId(),
                     "playerB", b.getId(),
-                    "stretch", stretch
+                    "stretch", stretchFromRest
                 ));
             }
 
-            double verticalFactor = (!a.isGrounded() && !b.isGrounded()) ? GameConfig.THREAD_VERTICAL_PULL * 0.4 : GameConfig.THREAD_VERTICAL_PULL * 0.1;
-            a.setX(a.getX() + nx * pull * aShare);
-            a.setY(a.getY() + ny * pull * verticalFactor * aShare);
-            b.setX(b.getX() - nx * pull * bShare);
-            b.setY(b.getY() - ny * pull * verticalFactor * bShare);
+            double springImpulse = 0;
+            double dampingImpulse = separatingSpeed * Math.min(1.0,
+                (distance > GameConfig.THREAD_MAX_DISTANCE ? GameConfig.THREAD_HARD_DAMPING : GameConfig.THREAD_DAMPING) * dt);
+            double cancelImpulse = 0;
+            double positionCorrection = 0;
 
-            a.setVx(a.getVx() + nx * pull * 0.55);
-            b.setVx(b.getVx() - nx * pull * 0.55);
-            if (!a.isGrounded()) a.setVy(a.getVy() + ny * pull * 0.10);
-            if (!b.isGrounded()) b.setVy(b.getVy() - ny * pull * 0.10);
+            if (!obstructed) {
+                springImpulse += softStretch * GameConfig.THREAD_PULL_FACTOR * dt;
+                springImpulse += hardStretch * GameConfig.THREAD_HARD_PULL_FACTOR * dt;
+                springImpulse = Math.max(0, springImpulse - closingSpeed * GameConfig.THREAD_DAMPING * dt * 0.6);
 
-            clampPlayer(a);
-            resolveHorizontalCollisions(a);
-            resolveVerticalCollisions(a);
-            clampPlayer(b);
-            resolveHorizontalCollisions(b);
-            resolveVerticalCollisions(b);
+                if (distance > GameConfig.THREAD_MAX_DISTANCE) {
+                    cancelImpulse = Math.max(cancelImpulse, separatingSpeed * 0.25);
+                    positionCorrection = Math.min(
+                        correctionBudget * 0.18 + (distance - GameConfig.THREAD_MAX_DISTANCE) * 0.35,
+                        correctionBudget * 0.72
+                    );
+                } else {
+                    positionCorrection = Math.min(softStretch * 0.08, correctionBudget * 0.18);
+                }
 
-            if (distance > GameConfig.THREAD_HARD_LIMIT) {
-                double excess = distance - GameConfig.THREAD_HARD_LIMIT;
-                a.setX(a.getX() + nx * excess * aShare);
-                a.setY(a.getY() + ny * excess * verticalFactor * aShare);
-                b.setX(b.getX() - nx * excess * bShare);
-                b.setY(b.getY() - ny * excess * verticalFactor * bShare);
-                a.setVx(a.getVx() * 0.65);
-                b.setVx(b.getVx() * 0.65);
-                clampPlayer(a);
-                resolveHorizontalCollisions(a);
-                resolveVerticalCollisions(a);
-                clampPlayer(b);
-                resolveHorizontalCollisions(b);
-                resolveVerticalCollisions(b);
+                if (distance > GameConfig.THREAD_HARD_LIMIT) {
+                    cancelImpulse = Math.max(cancelImpulse,
+                        separatingSpeed * GameConfig.THREAD_SEPARATION_CANCEL_FACTOR);
+                    positionCorrection = Math.min(
+                        correctionBudget * 0.45 + (distance - GameConfig.THREAD_HARD_LIMIT),
+                        correctionBudget
+                    );
+                }
+
+                if (closingSpeed > 0) {
+                    positionCorrection = Math.max(0, positionCorrection - closingSpeed * dt * 0.2);
+                }
+            } else {
+                dampingImpulse = 0;
+                cancelImpulse = separatingSpeed * (distance > GameConfig.THREAD_HARD_LIMIT
+                    ? GameConfig.THREAD_SEPARATION_CANCEL_FACTOR
+                    : 0.55);
             }
+
+            double velocityImpulse = springImpulse + dampingImpulse + cancelImpulse;
+            if (velocityImpulse > 0) {
+                applyThreadVelocityImpulse(a, b, nx, ny, velocityImpulse, aShare, bShare);
+            }
+
+            if (!obstructed && positionCorrection > 0) {
+                applyThreadPositionCorrection(a, b, nx, ny, positionCorrection, aShare, bShare);
+            }
+
+            stabilizeThreadResolvedPlayer(a);
+            stabilizeThreadResolvedPlayer(b);
         }
+    }
+
+    private double threadMobility(Player player) {
+        return player.isGrounded() ? 0.35 : 0.65;
+    }
+
+    private void cancelSeparatingVelocityAgainstThreadNeighbors(Player player) {
+        for (Player neighbor : GameRules.getThreadNeighbors(player, sessionService.getPlayers().values())) {
+            double dx = neighbor.getCenterX() - player.getCenterX();
+            double dy = neighbor.getCenterY() - player.getCenterY();
+            double distance = Math.sqrt(dx * dx + dy * dy);
+            if (distance == 0 || distance <= GameConfig.THREAD_HARD_LIMIT) continue;
+
+            double nx = dx / distance;
+            double ny = dy / distance;
+            double awaySpeed = -(player.getVx() * nx + player.getVy() * ny);
+            if (awaySpeed <= 0) continue;
+
+            player.setVx(player.getVx() + nx * awaySpeed);
+            player.setVy(player.getVy() + ny * awaySpeed);
+        }
+    }
+
+    private double threadVerticalFactor(Player player) {
+        return player.isGrounded() ? GameConfig.THREAD_GROUNDED_VERTICAL_FACTOR : GameConfig.THREAD_AIR_VERTICAL_FACTOR;
+    }
+
+    private void applyThreadVelocityImpulse(Player a, Player b, double nx, double ny,
+                                            double impulse, double aShare, double bShare) {
+        double aImpulse = impulse * aShare;
+        double bImpulse = impulse * bShare;
+
+        a.setVx(a.getVx() + nx * aImpulse);
+        b.setVx(b.getVx() - nx * bImpulse);
+        a.setVy(a.getVy() + ny * aImpulse * threadVerticalFactor(a));
+        b.setVy(b.getVy() - ny * bImpulse * threadVerticalFactor(b));
+    }
+
+    private void applyThreadPositionCorrection(Player a, Player b, double nx, double ny,
+                                               double correction, double aShare, double bShare) {
+        ThreadCollisionHelper.applyValidatedDelta(
+            a,
+            nx * correction * aShare,
+            ny * correction * aShare * threadVerticalFactor(a),
+            sessionService.getPlatforms(),
+            sessionService.getDoor(),
+            sessionService.getPushBlocks()
+        );
+        ThreadCollisionHelper.applyValidatedDelta(
+            b,
+            -nx * correction * bShare,
+            -ny * correction * bShare * threadVerticalFactor(b),
+            sessionService.getPlatforms(),
+            sessionService.getDoor(),
+            sessionService.getPushBlocks()
+        );
+    }
+
+    private void stabilizeThreadResolvedPlayer(Player player) {
+        clampPlayer(player);
+        resolveHorizontalCollisions(player);
+        resolveVerticalCollisions(player);
     }
 
     private void resolvePlayerCollisions(List<Player> players) {

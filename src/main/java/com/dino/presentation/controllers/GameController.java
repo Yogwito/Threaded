@@ -10,6 +10,7 @@ import com.dino.domain.entities.PlatformTile;
 import com.dino.domain.entities.Player;
 import com.dino.domain.entities.PushBlock;
 import com.dino.domain.events.EventNames;
+import com.dino.domain.rules.GameRules;
 import com.dino.infrastructure.serialization.MessageSerializer;
 import com.dino.presentation.render.PixelArtTheme;
 import javafx.animation.AnimationTimer;
@@ -352,10 +353,7 @@ public class GameController implements Initializable {
     }
 
     private void drawThread(GraphicsContext gc, List<Player> players, double scaleX, double scaleY) {
-        List<Player> connected = players.stream()
-            .filter(p -> p.isConnected() && p.isAlive())
-            .sorted((a, b) -> Double.compare(a.getX(), b.getX()))
-            .toList();
+        List<Player> connected = GameRules.getConnectedPlayersInThreadOrder(players);
 
         for (int i = 0; i < connected.size() - 1; i++) {
             Player a = connected.get(i);

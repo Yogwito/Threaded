@@ -47,6 +47,14 @@ public final class GameConfig {
     public static final double THREAD_DAMPING = 2.4;
     public static final double THREAD_VERTICAL_PULL = 0.16;
     public static final double THREAD_HARD_LIMIT = 340.0;
+    public static final double THREAD_HARD_PULL_FACTOR = 11.2;
+    public static final double THREAD_HARD_DAMPING = 3.6;
+    public static final double THREAD_MAX_POSITION_CORRECTION_PER_TICK = 18.0;
+    public static final double THREAD_POSITION_STEP = 4.0;
+    public static final double THREAD_SEPARATION_CANCEL_FACTOR = 0.9;
+    public static final double THREAD_OBSTRUCTION_MARGIN = 2.0;
+    public static final double THREAD_GROUNDED_VERTICAL_FACTOR = 0.05;
+    public static final double THREAD_AIR_VERTICAL_FACTOR = 0.16;
     public static final double PLAYER_COLLISION_CONTACT_MARGIN = 9.0;
     public static final double PLAYER_COLLISION_VELOCITY_DAMPING = 0.72;
     public static final double PLAYER_COLLISION_CARRY_RATIO = 0.35;

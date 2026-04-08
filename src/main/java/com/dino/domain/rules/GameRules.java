@@ -8,6 +8,7 @@ import com.dino.domain.entities.PlatformTile;
 import com.dino.domain.entities.Player;
 import com.dino.domain.entities.PushBlock;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
@@ -66,6 +67,52 @@ public final class GameRules {
     }
 
     /**
+     * Determina si un rectángulo arbitrario intersecta cualquier sólido
+     * relevante para el hilo.
+     */
+    public static boolean intersectsAnySolid(double x, double y, double width, double height,
+                                             Collection<PlatformTile> platforms,
+                                             Door door,
+                                             Collection<PushBlock> pushBlocks) {
+        if (platforms != null) {
+            for (PlatformTile platform : platforms) {
+                if (platform != null && intersects(x, y, width, height,
+                    platform.getX(), platform.getY(), platform.getWidth(), platform.getHeight())) {
+                    return true;
+                }
+            }
+        }
+
+        if (door != null && !door.isOpen() && intersects(x, y, width, height,
+            door.getX(), door.getY(), door.getWidth(), door.getHeight())) {
+            return true;
+        }
+
+        if (pushBlocks != null) {
+            for (PushBlock block : pushBlocks) {
+                if (block != null && intersects(x, y, width, height,
+                    block.getX(), block.getY(), block.getWidth(), block.getHeight())) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Determina si un jugador intersecta cualquier sólido relevante para el hilo.
+     */
+    public static boolean intersectsAnySolid(Player player,
+                                             Collection<PlatformTile> platforms,
+                                             Door door,
+                                             Collection<PushBlock> pushBlocks) {
+        if (player == null) return false;
+        return intersectsAnySolid(player.getX(), player.getY(), player.getWidth(), player.getHeight(),
+            platforms, door, pushBlocks);
+    }
+
+    /**
      * Determina si un bloque móvil está colisionando con una plataforma.
      */
     public static boolean intersects(PushBlock block, PlatformTile platform) {
@@ -115,12 +162,50 @@ public final class GameRules {
     }
 
     /**
-     * Indica si un desplazamiento viola la distancia máxima permitida por el hilo.
+     * Retorna los jugadores conectados y vivos preservando el orden recibido.
+     *
+     * <p>Cuando la colección fuente proviene de {@code SessionService.players},
+     * el resultado corresponde al orden de unión porque el mapa subyacente es
+     * un {@code LinkedHashMap}.</p>
      */
-    public static boolean violatesThreadDistance(Player movingPlayer, Collection<Player> players) {
-        for (Player other : players) {
-            if (other == movingPlayer || !other.isConnected() || !other.isAlive()) continue;
-            if (distance(movingPlayer, other) > GameConfig.THREAD_HARD_LIMIT) {
+    public static List<Player> getConnectedPlayersInThreadOrder(Collection<Player> players) {
+        List<Player> ordered = new ArrayList<>();
+        for (Player player : players) {
+            if (player == null || !player.isConnected() || !player.isAlive()) continue;
+            ordered.add(player);
+        }
+        return ordered;
+    }
+
+    /**
+     * Retorna los vecinos adyacentes de un jugador dentro de la cadena del hilo.
+     */
+    public static List<Player> getThreadNeighbors(Player player, Collection<Player> players) {
+        if (player == null || player.getId() == null) return List.of();
+
+        List<Player> ordered = getConnectedPlayersInThreadOrder(players);
+        int index = -1;
+        for (int i = 0; i < ordered.size(); i++) {
+            if (player.getId().equals(ordered.get(i).getId())) {
+                index = i;
+                break;
+            }
+        }
+        if (index < 0) return List.of();
+
+        List<Player> neighbors = new ArrayList<>(2);
+        if (index > 0) neighbors.add(ordered.get(index - 1));
+        if (index + 1 < ordered.size()) neighbors.add(ordered.get(index + 1));
+        return neighbors;
+    }
+
+    /**
+     * Indica si un jugador excede el límite duro del hilo respecto a sus vecinos
+     * adyacentes en la cadena fija.
+     */
+    public static boolean violatesAdjacentThreadHardLimit(Player movingPlayer, Collection<Player> players) {
+        for (Player neighbor : getThreadNeighbors(movingPlayer, players)) {
+            if (distance(movingPlayer, neighbor) > GameConfig.THREAD_HARD_LIMIT) {
                 return true;
             }
         }
@@ -151,5 +236,87 @@ public final class GameRules {
             if (withinX && onTop) return platform;
         }
         return null;
+    }
+
+    /**
+     * Verifica si un segmento 2D intersecta un rectángulo axis-aligned.
+     */
+    public static boolean segmentIntersectsAabb(double x1, double y1, double x2, double y2,
+                                                double rx, double ry, double rw, double rh) {
+        double dx = x2 - x1;
+        double dy = y2 - y1;
+        double tMin = 0.0;
+        double tMax = 1.0;
+
+        if (Math.abs(dx) < 1e-9) {
+            if (x1 < rx || x1 > rx + rw) return false;
+        } else {
+            double invDx = 1.0 / dx;
+            double tx1 = (rx - x1) * invDx;
+            double tx2 = (rx + rw - x1) * invDx;
+            double txMin = Math.min(tx1, tx2);
+            double txMax = Math.max(tx1, tx2);
+            tMin = Math.max(tMin, txMin);
+            tMax = Math.min(tMax, txMax);
+            if (tMin > tMax) return false;
+        }
+
+        if (Math.abs(dy) < 1e-9) {
+            return y1 >= ry && y1 <= ry + rh;
+        }
+
+        double invDy = 1.0 / dy;
+        double ty1 = (ry - y1) * invDy;
+        double ty2 = (ry + rh - y1) * invDy;
+        double tyMin = Math.min(ty1, ty2);
+        double tyMax = Math.max(ty1, ty2);
+        tMin = Math.max(tMin, tyMin);
+        tMax = Math.min(tMax, tyMax);
+        return tMin <= tMax;
+    }
+
+    /**
+     * Determina si existe un sólido entre dos jugadores a lo largo del segmento
+     * que une sus centros.
+     */
+    public static boolean isThreadObstructed(Player a, Player b,
+                                             Collection<PlatformTile> platforms,
+                                             Door door,
+                                             Collection<PushBlock> pushBlocks,
+                                             double margin) {
+        if (a == null || b == null) return false;
+
+        double ax = a.getCenterX();
+        double ay = a.getCenterY();
+        double bx = b.getCenterX();
+        double by = b.getCenterY();
+
+        if (platforms != null) {
+            for (PlatformTile platform : platforms) {
+                if (platform != null && segmentIntersectsAabb(ax, ay, bx, by,
+                    platform.getX() - margin, platform.getY() - margin,
+                    platform.getWidth() + margin * 2.0, platform.getHeight() + margin * 2.0)) {
+                    return true;
+                }
+            }
+        }
+
+        if (door != null && !door.isOpen() && segmentIntersectsAabb(ax, ay, bx, by,
+            door.getX() - margin, door.getY() - margin,
+            door.getWidth() + margin * 2.0, door.getHeight() + margin * 2.0)) {
+            return true;
+        }
+
+        if (pushBlocks != null) {
+            for (PushBlock block : pushBlocks) {
+                if (block != null && segmentIntersectsAabb(ax, ay, bx, by,
+                    block.getX() - margin, block.getY() - margin,
+                    block.getWidth() + margin * 2.0, block.getHeight() + margin * 2.0)) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 }
