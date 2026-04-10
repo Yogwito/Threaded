@@ -1,136 +1,236 @@
 # Threaded
 
-Juego cooperativo distribuido hecho con JavaFX y sockets UDP. Una instancia actúa como host autoritativo, simula la partida completa y distribuye snapshots del estado; las demás instancias funcionan como clientes ligeros que envían input y renderizan el mundo sincronizado.
+`Threaded` es un juego cooperativo 2D hecho con Java 21, JavaFX y Maven. Cada partida usa un modelo multijugador host autoritativo sobre UDP: una instancia actúa como host, simula toda la partida y distribuye snapshots; las demás instancias funcionan como clientes ligeros que envían input y renderizan el estado sincronizado.
+
+El proyecto no busca ser un motor nuevo ni una reescritura total del género. El objetivo actual del repositorio es ser un juego académico/prototipo serio: jugable, defendible técnicamente, con arquitectura limpia para su escala, documentación útil y una base razonablemente mantenible.
 
 Repositorio: https://github.com/Yogwito/Threaded
 
-## Descripción del juego
+## Estado actual
 
-`Threaded` es un juego cooperativo de plataformas para 2 a 4 jugadores. Los personajes avanzan por una campaña de niveles conectados por un hilo virtual: si se separan demasiado, la cuerda aplica tensión y puede frenar o corregir el movimiento. El objetivo es coordinarse para evitar hazards, recoger objetos y llegar juntos a la meta.
+- Lenguaje y runtime: Java 21
+- UI: JavaFX
+- Build: Maven
+- Red: UDP con modelo host autoritativo
+- Niveles actuales: 8 (`level1.txt` a `level8.txt`)
+- Jugadores: 2 a 4
+- Arquitectura: capas separadas entre presentación, aplicación, dominio e infraestructura
+- Estado del multiplayer: funcional en red local, con snapshots y lobby operativo
+- Estado visual: HUD, lobby y render de gameplay ya pasaron por una fase de pulido importante
+- Estado de testing: existe suite automatizada útil para sesión, protocolo, snapshots y coordinadores; no hay testing visual JavaFX ni integración real multiproceso completa
 
-La campaña actual se carga desde archivos de texto ubicados en `src/main/resources/com/dino/levels`. En el estado actual del repositorio hay 8 niveles (`level1.txt` a `level8.txt`) y el host los detecta dinámicamente con `LevelLoader.countAvailableLevels()`.
+La campaña actual se detecta dinámicamente desde `src/main/resources/com/dino/levels` usando `LevelLoader.countAvailableLevels()`.
 
 ## Requisitos
 
 - JDK 21
 - Maven 3.9 o superior
 
-## Ejecutar
+## Compilar y ejecutar
 
-```bash
-mvn javafx:run
-```
-
-## Compilar
+### Compilar
 
 ```bash
 mvn compile
 ```
 
-## Flujo básico de uso
+### Ejecutar tests
 
-1. Inicia una instancia como host y define IP, puerto local y cantidad esperada de jugadores.
-2. Inicia una o más instancias cliente y usa la IP/puerto del host.
-3. En el lobby, cada jugador marca `Listo`.
-4. El host inicia la partida.
-5. Durante la partida, el movimiento se controla con el mouse y el salto con clic izquierdo.
+```bash
+mvn test
+```
+
+### Arrancar la aplicación
+
+```bash
+mvn javafx:run
+```
+
+## Flujo de uso
+
+1. Inicia una instancia y elige `Crear sala` para actuar como host.
+2. Configura IP local, puerto local y cantidad esperada de jugadores.
+3. Inicia una o más instancias cliente con `Unirse`, usando la IP y puerto del host.
+4. Cada jugador entra al lobby, confirma nombre/color y marca `READY`.
+5. El host inicia la partida.
+6. Durante el gameplay, el mouse define el objetivo de movimiento y el clic izquierdo ejecuta el salto.
+7. La campaña termina cuando se completan todos los niveles y se muestra la pantalla final con ranking.
+
+## Cómo jugar
+
+### Controles
+
+- Moverse: apuntar con el mouse
+- Saltar: clic izquierdo
+
+### Objetivo general
+
+Avanzar en equipo por una campaña de plataformas, controlar la tensión del hilo, evitar hazards, empujar cajas cuando haga falta, recoger monedas y llegar juntos a la salida de cada nivel.
 
 ## Reglas del juego
 
-1. Todos los jugadores se controlan con mouse: la posición del cursor define la dirección horizontal y el clic izquierdo ejecuta el salto.
-2. Los jugadores están unidos por un hilo en cadena fija según el orden de unión a la sala. El hilo tiene slack hasta `THREAD_REST_DISTANCE`, tensión suave hasta `THREAD_MAX_DISTANCE` y un límite absoluto `THREAD_HARD_LIMIT`.
-3. El hilo no debe atravesar sólidos: paredes, plataformas sólidas, puertas cerradas y bloques empujables bloquean correcciones posicionales directas.
-4. Si un jugador cae al vacío o toca un hazard, el host reinicia la sala actual para todos los jugadores conectados.
-5. El host mantiene la física autoritativa: los clientes no deciden puntaje, colisiones ni resolución final del movimiento.
-6. Un nivel solo se completa cuando todos los jugadores conectados y vivos están dentro de la salida.
-7. Los jugadores pueden apilarse. Si un jugador está apoyado encima de otro, el de arriba cuenta como `grounded` y puede saltar.
+1. El host es la única autoridad física: clientes no resuelven colisiones, score ni avance de nivel.
+2. Los jugadores quedan unidos por un hilo virtual en cadena según el orden de unión al lobby.
+3. Si la separación entre vecinos crece demasiado, el hilo aplica tensión y puede corregir movimiento.
+4. El hilo no debe atravesar sólidos: plataformas, puertas cerradas y bloques empujables bloquean correcciones directas.
+5. Si un jugador cae al vacío o toca un hazard, el host reinicia la sala actual para todos los jugadores conectados.
+6. Un nivel solo termina cuando todos los jugadores conectados y vivos están dentro de la salida.
+7. Los jugadores pueden apilarse: si uno está apoyado sobre otro, el de arriba cuenta como `grounded` y puede saltar.
+8. Las cajas visibles de la campaña son empujables y forman parte real del recorrido.
 
 ## Sistema de puntaje
 
-El puntaje se calcula del lado host y se replica por snapshot:
+El score se calcula exclusivamente en el host y se replica por snapshot.
 
-- moneda pequeña: `+10`
-- moneda grande: `+25`
-- primer jugador en llegar a la salida: `+100`
-- segundo jugador en llegar a la salida: `+70`
-- jugadores restantes que llegan después: `+50`
-- caer al vacío o tocar hazard: `-15`
+- Moneda pequeña: `+10`
+- Moneda grande: `+25`
+- Primer jugador en llegar a la salida: `+100`
+- Segundo jugador en llegar a la salida: `+70`
+- Jugadores restantes que llegan después: `+50`
+- Caer al vacío o tocar hazard: `-15`
 
-El HUD muestra un ranking en vivo con nombre y puntaje, y la pantalla final muestra el ganador según el mayor puntaje acumulado.
+El HUD muestra ranking en vivo por nombre y puntaje. La pantalla final ordena a los jugadores por score acumulado y declara un ganador.
 
-## Condiciones de ganar y perder
+## Niveles y progresión
 
-- Ganar nivel: todos los jugadores conectados llegan a la salida.
-- Ganar campaña: se completan todos los niveles detectados por el host.
-- Perder progreso de sala: cualquier caída al vacío o contacto con hazard reinicia la sala actual.
+La campaña actual contiene 8 niveles rediseñados para tener una progresión más clara:
 
-## Interfaz y feedback
+- Nivel 1: tutorial de movimiento y lectura de ruta
+- Nivel 2: cooperación básica y saltos en pareja
+- Nivel 3: introducción al uso visible de cajas
+- Nivel 4: coordinación con múltiples cajas
+- Nivel 5: ascenso con castigo moderado
+- Nivel 6: zigzag con más tensión de cuerda
+- Nivel 7: tramo avanzado con plataformas especiales
+- Nivel 8: cierre de campaña combinando cooperación, tensión y cajas
 
-- Pantalla inicial con nombre del jugador, IP, puerto y modo host/cliente.
-- Lobby con lista de jugadores y estado `listo/conectado`.
-- HUD en vivo con tiempo, nivel, estado de sala, ranking y log de eventos.
-- Pantalla final con nombres, puntajes, duración total y ganador.
-- Sonidos automáticos disparados por eventos del juego, implementados en `SoundManager`.
-
-## Arquitectura del sistema
-
-El proyecto está organizado por capas para separar interfaz, aplicación, dominio e infraestructura:
-
-- `com.dino.MainApp`: bootstrap de JavaFX y ciclo de vida principal.
-- `application.runtime.AppContext`: composición del runtime compartido de una instancia.
-- `presentation.navigation.SceneNavigator`: carga de vistas e inyección del contexto en controladores.
-- `application.services.SessionService`: estado compartido de lobby y partida.
-- `application.services.SessionSnapshotMapper`: armado y aplicación de snapshots UDP.
-- `application.services.HostMatchService`: coordinador de la simulación autoritativa del host.
-- `application.services.PlayerPhysicsService`: física base, colisiones y push blocks.
-- `application.services.ThreadConstraintService`: restricciones del hilo/cuerda.
-- `application.services.LevelFlowService`: score, hazards, salida, reseteos y avance de nivel.
-- `application.levels.LevelLoader`: carga de niveles y metadata desde archivos `.txt`.
-- `application.usecases.*`: creación y unión de sesiones.
-- `domain.rules.GameRules`: reglas puras del juego y colisiones.
-- `presentation.controllers.*`: menú inicial, lobby, partida y pantalla final.
-- `presentation.components.*`: observadores de scoreboard y bitácora de eventos.
-- `infrastructure.network.UdpPeer`: transporte UDP.
-- `infrastructure.serialization.MessageSerializer`: tipos y armado de mensajes.
-- `infrastructure.audio.SoundManager`: audio procedural disparado por eventos.
+Los niveles se cargan desde matrices numéricas en archivos `.txt`. La metadata soportada hoy es:
 
 ```text
-src/main/java/com/dino
-├── application
-│   ├── levels
-│   ├── services
-│   └── usecases
-├── config
-├── domain
-│   ├── entities
-│   ├── events
-│   └── rules
-├── infrastructure
-│   ├── audio
-│   ├── network
-│   └── serialization
-└── presentation
-    ├── components
-    ├── controllers
-    └── render
+name=Nivel 1 - Sendero Guiado
+background=forest
+tileSize=64
 ```
 
-## Patrones de diseño usados
+Después de la metadata, cada fila representa tiles separados por comas. La traducción de códigos vive en `TileType`.
+
+## Arquitectura
+
+El proyecto está separado por capas para evitar que UI, red, sesión y reglas queden mezcladas.
+
+### Bootstrap y runtime
+
+- `com.dino.MainApp`: punto de entrada JavaFX
+- `application.runtime.AppRuntimeManager`: ciclo de vida global del runtime
+- `application.runtime.AppContext`: composition root de la instancia
+
+### Aplicación
+
+- `application.usecases.CreateSessionUseCase` y `JoinSessionUseCase`: creación y unión de sesiones
+- `application.services.SessionService`: store compartido de sesión
+- `application.services.SessionLifecycleService`: transición macro entre lobby, gameplay y resultados
+- `application.services.SessionTransitionPolicy` + `SessionStateMachine`: regla y máquina de estados explícitas
+- `application.services.HostMatchService`: coordinador del tick autoritativo del host
+- `application.services.LobbySessionCoordinator`: protocolo UDP previo a la partida
+- `application.services.GameplaySessionCoordinator`: polling de gameplay, snapshots y mensajes críticos
+
+### Simulación y reglas
+
+- `application.services.PlayerPhysicsService`: física base de jugadores
+- `application.services.PlayerContactService`: apilamiento y contactos entre jugadores
+- `application.services.PushBlockPhysicsService`: física de bloques empujables
+- `application.services.ThreadConstraintService`: tensión y correcciones del hilo
+- `application.services.LevelFlowService`: score, hazards, resets, salida y avance de nivel
+- `domain.rules.GameRules`: reglas puras y cálculos sin efectos secundarios
+
+### Niveles
+
+- `application.levels.LevelCatalog` + `ResourceLevelCatalog`: acceso abstracto y fuente actual de niveles
+- `application.levels.LevelLoader`: parser del formato textual de niveles
+- `application.levels.LevelData`: estructura parseada del nivel
+
+### Presentación
+
+- `presentation.flow.*`: fachadas por pantalla para no acoplar controladores al runtime completo
+- `presentation.controllers.*`: controladores JavaFX delgados
+- `presentation.components.*`: scoreboard y event log observables
+- `presentation.render.GameRenderer` + `GameRenderState`: render de gameplay desacoplado
+- `presentation.render.LobbyPreviewRenderer`: preview visual del lobby
+
+### Infraestructura
+
+- `infrastructure.network.NetworkPeer` + `UdpPeer`: transporte UDP
+- `infrastructure.serialization.MessageCodec` + `MessageSerializer`: serialización JSON actual
+- `infrastructure.serialization.ProtocolMessageValidator`: validación estructural mínima del protocolo
+- `infrastructure.audio.SoundManager` + `ProceduralAudioEngine`: audio procedural orientado por eventos
+
+## Red y sincronización
+
+La red del proyecto usa exclusivamente UDP. No hay TCP.
+
+### Modelo real implementado
+
+- El host simula física, score, hazards, cajas, salida, tiempo y avance de campaña.
+- Los clientes envían input y renderizan.
+- El host difunde snapshots completos del estado visible.
+- Los clientes aplican snapshots autoritativos y no re-simulan la lógica principal.
+
+### Qué manda el cliente
+
+- `JOIN`
+- `READY`
+- `MOVE_TARGET`
+- `JUMP`
+- `DISCONNECT`
+
+### Qué decide el host
+
+- Movimiento final y colisiones
+- Tensión del hilo
+- Estado de cajas
+- Recogida de monedas
+- Penalizaciones por caída/hazard
+- Score
+- Reinicios de sala
+- Avance de nivel
+- Final de campaña
+
+### Snapshots
+
+- La frecuencia sale de `GameConfig.SNAPSHOT_RATE_HZ`
+- Esa configuración es la fuente de verdad del runtime
+- Los snapshots incluyen `seq`
+- Los clientes ignoran snapshots fuera de orden
+- El pipeline vive en `SessionSnapshotService`, `SessionSnapshotBuilder` y `SessionSnapshotApplier`
+
+### Confiabilidad real de UDP
+
+El proyecto no implementa una capa confiable completa con ACK general, retransmisión arbitraria o reconexión transparente.
+
+La estrategia actual es deliberadamente mínima:
+
+- snapshots e input normal viajan como best-effort;
+- `START_GAME` y `GAME_OVER` se refuerzan con ráfaga corta usando `UdpPeer.broadcastBurst(...)`;
+- esto mejora transiciones críticas sin cambiar el modelo base de red.
+
+## Patrones de diseño reales
 
 ### Observer
 
-Se implementa mediante `EventBus` y varios suscriptores:
+El patrón aparece de forma explícita en el bus de eventos interno:
 
-- `EventBus` publica eventos internos del juego.
-- `ScoreBoardObserver` reconstruye el ranking a partir de snapshots.
-- `EventLogObserver` mantiene una bitácora legible para la interfaz.
-- `SoundManager` escucha los mismos eventos para reproducir sonidos automáticamente.
+- `EventBus` publica eventos del juego;
+- `ScoreBoardObserver` construye el ranking visible;
+- `EventLogObserver` mantiene la bitácora de eventos;
+- `SoundManager` reacciona a esos mismos eventos para generar audio.
 
-Esto desacopla la lógica de juego del HUD y del audio. El host publica eventos una sola vez y varios subsistemas reaccionan sin depender entre sí.
+Esto desacopla gameplay, HUD y feedback audiovisual.
 
 ### Adapter
 
-Se implementa en `UdpPeer`, que envuelve `DatagramSocket` y ofrece una API más simple para:
+El patrón aparece de forma clara en `UdpPeer`.
+
+`UdpPeer` adapta `DatagramSocket` a una API pequeña y estable para:
 
 - `bind`
 - `send`
@@ -138,78 +238,65 @@ Se implementa en `UdpPeer`, que envuelve `DatagramSocket` y ofrece una API más 
 - `broadcastBurst`
 - `receive`
 
-El resto del proyecto no trabaja directamente con la API baja de Java networking, sino con este adaptador.
+Así, el resto del proyecto no depende directamente de la API baja de networking de Java.
 
-### Factory ligera
+## SOLID
 
-`MessageSerializer` centraliza los tipos de mensaje y el método `build(...)` para armar mapas serializables. No es el patrón principal de la sustentación, pero sí ayuda a mantener consistente el protocolo.
+La aplicación de SOLID es fuerte para el tamaño del proyecto, pero no perfecta.
 
-## Comunicación UDP y modelo de red
+### Lo mejor aplicado
 
-La comunicación del proyecto es exclusivamente por UDP. No se usa TCP.
+- `S`: controladores JavaFX, coordinadores de red, renderers y slices de sesión ya no mezclan tantas responsabilidades
+- `I`: existen contratos pequeños y útiles como `SceneNavigation`, `NetworkPeer`, `MessageCodec`, `EventChannel` y los `*FlowAware`
+- `D`: la composición vive en `AppContext`; la UI depende de fachadas por pantalla en vez del runtime completo
 
-Modelo real implementado:
+### Lo aplicado de forma parcial
 
-- el host es la única autoridad física;
-- los clientes envían input (`MOVE_TARGET`, `JUMP`, `READY`, `JOIN`);
-- el host simula movimiento, colisiones, puntaje, hazards, salida, cuerda y objetos interactivos cargados en la sesión;
-- el host difunde snapshots completos del estado;
-- los clientes aplican snapshots y renderizan.
+- `O`: extender render, niveles o coordinadores es razonable; extender el núcleo de sesión sigue costando más de lo ideal
+- `L`: las abstracciones introducidas sí son sustituibles, pero el proyecto todavía no vive enteramente sobre interfaces
 
-Esto no es una malla P2P completa; es un modelo host autoritativo sobre UDP. Para la sustentación debe defenderse como un sistema distribuido funcional con interacción en tiempo real entre múltiples pantallas.
+### Deuda técnica real
 
-### Sincronización actual
+- `SessionService` sigue siendo un agregado mutable importante
+- la arquitectura no pretende ser hexagonal pura ni DI completa
+- hay partes del protocolo aún apoyadas en `Map<String, Object>`
 
-- La frecuencia de snapshots sale de `GameConfig.SNAPSHOT_RATE_HZ`.
-- El runtime usa esa misma configuración como fuente única de verdad.
-- Los snapshots incluyen un `seq` para ignorar paquetes fuera de orden.
-- Los clientes no re-simulan la lógica principal; aceptan el estado autoritativo del host.
+## Mejoras recientes relevantes
 
-### Confiabilidad UDP actual
+- refactor arquitectónico para separar runtime, flujos de pantalla, coordinadores y slices de estado;
+- state machine explícita de sesión;
+- pipeline de snapshots extraído del store principal;
+- lobby visual con preview de jugadores conectados;
+- mejora fuerte del render del gameplay, HUD y pantalla final;
+- pulido visual de cuerda, jugadores, cajas, monedas, hazards y meta;
+- rediseño de los 8 niveles actuales para mejorar progresión y uso de cooperación/cajas;
+- mejoras de jugabilidad en aim, cadencia de snapshots y reinicio visual limpio;
+- suite de tests útil para sesión, protocolo, snapshots y coordinadores;
+- documentación técnica y JavaDoc reforzadas en servicios, protocolo y contratos de UI.
 
-El proyecto no implementa un protocolo confiable completo con ACK y reintentos generales. La estrategia actual es deliberadamente simple:
+## Tests automatizados
 
-- input y snapshots regulares viajan como UDP best-effort;
-- los mensajes críticos `START_GAME` y `GAME_OVER` se reenvían en ráfaga corta con `UdpPeer.broadcastBurst(...)`;
-- esto reduce el riesgo de perder transiciones críticas sin cambiar el modelo de red ni introducir una capa confiable completa.
+La suite actual cubre principalmente lógica de alto valor:
 
-## Aplicación de SOLID
+- transición de sesión y política de estados;
+- coordinadores de lobby y gameplay;
+- validación estructural del protocolo;
+- snapshots y secuencias;
+- registro de peers;
+- algunos flujos de pantalla desacoplados de JavaFX real.
 
-La aplicación de SOLID sigue siendo parcial, pero la refactorización actual dejó el diseño bastante más defendible:
-
-- `S` fuerte/parcial: `HostMatchService` pasó a ser un coordinador y la lógica antes monolítica se separó en `PlayerPhysicsService`, `ThreadConstraintService` y `LevelFlowService`. `SessionService` conserva el estado vivo y delega snapshots a `SessionSnapshotMapper`.
-- `O` parcial: las mecánicas siguen coordinándose desde el host, pero la extracción por servicios hace más sencillo extender física, hilo o flujo de nivel sin volver a crecer una sola clase gigante.
-- `L` parcial: el proyecto sigue favoreciendo composición sobre herencia. Las abstracciones introducidas (`EventPublisher`, `EventChannel`, `NetworkPeer`) son contratos pequeños y sustituibles.
-- `I` parcial: se introdujeron interfaces enfocadas para publicación de eventos, canal completo de eventos y transporte de red, evitando depender de APIs más grandes de lo necesario.
-- `D` parcial/fuerte: los casos de uso y varios servicios núcleo dependen ahora de abstracciones (`EventPublisher`, `EventChannel`, `NetworkPeer`) y los controladores reciben un `AppContext` inyectado por `SceneNavigator` en lugar de resolver múltiples singletons globales.
-
-## Dificultades técnicas y soluciones
-
-- Cuerda atravesando sólidos:
-  se corrigió la topología del hilo a cadena fija por orden de unión y la corrección posicional ahora valida colisiones para no arrastrar jugadores a través de muros.
-- Jugador encima de otro sin poder saltar:
-  se agregó una actualización explícita de estado de apilamiento para que el jugador superior cuente como `grounded`.
-- Inconsistencia en snapshots:
-  la frecuencia de snapshots quedó alineada a `GameConfig.SNAPSHOT_RATE_HZ` como fuente única de verdad y el mapeo de snapshots se extrajo a `SessionSnapshotMapper`.
-- Mensajes críticos perdidos por UDP:
-  `START_GAME` y `GAME_OVER` se envían con ráfaga corta para mejorar la entrega sin rediseñar el protocolo.
-- Acoplamiento excesivo en runtime y controladores:
-  se introdujeron `AppContext` y `SceneNavigator` para centralizar composición, navegación e inyección de dependencias sin meter un framework de DI.
-
-## Niveles
-
-Los niveles se definen como matrices numéricas en recursos. Cada archivo puede incluir metadata al inicio:
-
-```text
-name=Nivel 1 - Ruta Basica
-background=forest
-tileSize=64
-```
-
-Después de la metadata, cada fila representa tiles del mundo separados por comas. La conversión del código numérico a tipo de tile vive en `TileType`.
+No hay tests visuales de JavaFX ni integración multiproceso completa con sockets reales como gate principal.
 
 ## Limitaciones actuales
 
-- No hay suite de tests automatizados en el repositorio.
-- La confiabilidad UDP sigue siendo mínima y focalizada solo en transiciones críticas.
-- `MainApp` todavía actúa como bootstrap global de JavaFX y el runtime sigue siendo stateful, por lo que SOLID no está aplicado de forma perfecta en todo el proyecto.
+- No existe una capa confiable completa sobre UDP.
+- La validación más importante de host + cliente sigue siendo manual.
+- `SessionService` está más limpio que al inicio, pero sigue siendo stateful y relativamente grande.
+- El lobby no fuerza todavía una política “dura” de readiness a nivel de protocolo para no cambiar comportamiento observable.
+- `mvn javafx:run` en JDK 21 puede mostrar warnings conocidos de JavaFX sobre `native access` y `sun.misc.Unsafe`; no corresponden a una excepción propia del juego.
+
+## Notas de ejecución y troubleshooting
+
+- Si un cliente no entra al lobby, revisa primero IP/puerto del host y asegúrate de que ambas instancias estén en la misma red local.
+- Si el host cambia de sala o vuelve al menú, conviene cerrar y recrear clientes para una demo limpia.
+- El juego fue probado sobre todo como demo manual local; antes de una entrega conviene hacer una validación manual host + cliente en dos instancias reales.

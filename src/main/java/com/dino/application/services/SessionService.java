@@ -25,41 +25,13 @@ import java.util.*;
  */
 public class SessionService {
     private final EventPublisher eventPublisher;
-    private final SessionSnapshotMapper snapshotMapper;
-
-    private String localPlayerId;
-    private String localIp;
-    private int localPort;
-    private String hostIp;
-    private int hostPort;
-    private boolean isHost;
-    private String playerName;
-    private int expectedPlayers;
-
-    private final Map<String, Player> players = new LinkedHashMap<>();
-    private final Map<String, InetSocketAddress> peerAddresses = new LinkedHashMap<>();
-    private final List<PlatformTile> platforms = new ArrayList<>();
-    private final List<PlatformTile> specialPlatforms = new ArrayList<>();
-    private final List<PlatformTile> hazards = new ArrayList<>();
-    private final List<PlatformTile> checkpoints = new ArrayList<>();
-    private final List<double[]> spawnPoints = new ArrayList<>();
-    private ButtonSwitch buttonSwitch;
-    private Door door;
-    private ExitZone exitZone;
-    private final List<PushBlock> pushBlocks = new ArrayList<>();
-    private int roomResetCount;
-    private String roomResetReason = "";
-    private int currentLevelIndex;
-    private int totalLevels;
-    private double elapsedTime;
-    private boolean gameRunning;
-    private volatile long lastSnapshotSeq = -1;
-    private long nextSnapshotSeq = 0;
-    private final List<CollectibleItem> coins = new ArrayList<>();
-    private final Map<String, Long> peerLastSeenMillis = new LinkedHashMap<>();
-    private String currentLevelName = "";
-    private String currentBackground = "default";
-    private int currentTileSize = 64;
+    private final SessionSnapshotService snapshotService;
+    private final SessionPeerRegistry peerRegistry;
+    private final SessionViewFactory viewFactory;
+    private final SessionConnectionState connectionState;
+    private final SessionMatchState matchState;
+    private final SessionWorldState worldState;
+    private final SessionStateMachine stateMachine;
 
     /**
      * Crea un contenedor de sesión asociado al bus de eventos global.
@@ -68,7 +40,13 @@ public class SessionService {
      */
     public SessionService(EventPublisher eventPublisher) {
         this.eventPublisher = eventPublisher;
-        this.snapshotMapper = new SessionSnapshotMapper();
+        this.snapshotService = new SessionSnapshotService();
+        this.peerRegistry = new SessionPeerRegistry();
+        this.viewFactory = new SessionViewFactory();
+        this.connectionState = new SessionConnectionState();
+        this.matchState = new SessionMatchState();
+        this.worldState = new SessionWorldState();
+        this.stateMachine = new SessionStateMachine();
     }
 
     /**
@@ -76,7 +54,7 @@ public class SessionService {
      *
      * @param player jugador a almacenar
      */
-    public synchronized void addPlayer(Player player) { players.put(player.getId(), player); }
+    public synchronized void addPlayer(Player player) { worldState.players().put(player.getId(), player); }
 
     /**
      * Elimina un jugador y cualquier rastro de su red asociada.
@@ -84,9 +62,8 @@ public class SessionService {
      * @param playerId identificador único del jugador
      */
     public synchronized void removePlayer(String playerId) {
-        players.remove(playerId);
-        peerAddresses.remove(playerId);
-        peerLastSeenMillis.remove(playerId);
+        worldState.players().remove(playerId);
+        peerRegistry.remove(playerId);
     }
 
     /**
@@ -98,13 +75,10 @@ public class SessionService {
      * @param data snapshot ya deserializado
      */
     @SuppressWarnings("unchecked")
-    public synchronized void updateFromSnapshot(Map<String, Object> data) {
-        if (data.containsKey("seq")) {
-            long seq = ((Number) data.get("seq")).longValue();
-            if (seq <= lastSnapshotSeq) return;
-            lastSnapshotSeq = seq;
+    synchronized void applyAuthoritativeSnapshot(Map<String, Object> data) {
+        if (!snapshotService.applyAuthoritativeSnapshot(this, data)) {
+            return;
         }
-        snapshotMapper.applySnapshot(this, data);
 
         // La UI y los observadores reaccionan a este evento; por eso el
         // SessionService no invoca controladores de forma directa.
@@ -119,117 +93,80 @@ public class SessionService {
      *
      * @return mapa serializable listo para enviarse por UDP
      */
-    public synchronized Map<String, Object> getSnapshotData() {
-        return snapshotMapper.buildSnapshot(this, ++nextSnapshotSeq);
+    synchronized Map<String, Object> buildAuthoritativeSnapshot() {
+        return snapshotService.buildAuthoritativeSnapshot(this, matchState.nextOutgoingSequence());
     }
 
     /**
      * Retorna la lista mutable de monedas del host.
      */
-    public List<CollectibleItem> getCoins() { return coins; }
+    List<CollectibleItem> getCoins() { return worldState.coins(); }
 
     /**
      * Retorna una copia defensiva de las monedas para la UI.
      */
     public synchronized List<CollectibleItem> getCoinsSnapshot() {
-        List<CollectibleItem> snapshot = new ArrayList<>();
-        for (CollectibleItem c : coins) {
-            CollectibleItem copy = new CollectibleItem(c.getId(), c.getX(), c.getY(), c.getPoints());
-            copy.setActive(c.isActive());
-            snapshot.add(copy);
-        }
-        return snapshot;
+        return viewFactory.copyCollectibles(worldState.coins());
     }
 
     /**
      * Limpia por completo el estado de la sesión actual.
      */
-    public synchronized void reset() {
-        players.clear();
-        peerAddresses.clear();
-        platforms.clear();
-        specialPlatforms.clear();
-        hazards.clear();
-        checkpoints.clear();
-        spawnPoints.clear();
-        pushBlocks.clear();
-        coins.clear();
-        buttonSwitch = null;
-        door = null;
-        exitZone = null;
-        roomResetCount = 0;
-        roomResetReason = "";
-        currentLevelIndex = 0;
-        totalLevels = 0;
-        elapsedTime = 0;
-        gameRunning = false;
-        currentLevelName = "";
-        currentBackground = "default";
-        currentTileSize = 64;
-        lastSnapshotSeq = -1;
-        nextSnapshotSeq = 0;
-        localPlayerId = null;
-        isHost = false;
-        peerLastSeenMillis.clear();
+    synchronized void clearSession() {
+        worldState.clearAll();
+        matchState.clear();
+        connectionState.clear();
+        peerRegistry.clear();
+        stateMachine.reset();
     }
 
     /**
      * Asocia un jugador remoto a una dirección UDP y actualiza su último pulso.
      */
     public synchronized void registerPeerAddress(String playerId, InetSocketAddress address) {
-        if (playerId != null && address != null) {
-            peerAddresses.put(playerId, address);
-            peerLastSeenMillis.put(playerId, System.currentTimeMillis());
-        }
+        peerRegistry.register(playerId, address);
     }
 
     /**
      * Lista únicamente peers remotos, excluyendo a la instancia local.
      */
     public synchronized List<InetSocketAddress> getRemotePeerAddresses() {
-        List<InetSocketAddress> remotes = new ArrayList<>();
-        for (Map.Entry<String, InetSocketAddress> entry : peerAddresses.entrySet()) {
-            if (!Objects.equals(entry.getKey(), localPlayerId)) remotes.add(entry.getValue());
-        }
-        return remotes;
+        return peerRegistry.getRemoteAddresses(connectionState.getLocalPlayerId());
     }
 
     /**
      * Cambia el estado de listo de un jugador.
      */
-    public synchronized void markPlayerReady(String playerId, boolean ready) {
-        Player player = players.get(playerId);
+    synchronized void markPlayerReady(String playerId, boolean ready) {
+        Player player = worldState.players().get(playerId);
         if (player != null) player.setReady(ready);
     }
 
     /**
      * Cambia el estado de conexión de un jugador y sincroniza su timestamp.
      */
-    public synchronized void markPlayerConnected(String playerId, boolean connected) {
-        Player player = players.get(playerId);
+    synchronized void markPlayerConnected(String playerId, boolean connected) {
+        Player player = worldState.players().get(playerId);
         if (player != null) player.setConnected(connected);
         if (connected) {
-            peerLastSeenMillis.put(playerId, System.currentTimeMillis());
+            peerRegistry.markSeen(playerId);
         } else {
-            peerLastSeenMillis.remove(playerId);
+            peerRegistry.remove(playerId);
         }
     }
 
     /**
      * Elimina la dirección de red asociada a un peer.
      */
-    public synchronized void removePeerAddress(String playerId) {
-        if (playerId != null) {
-            peerAddresses.remove(playerId);
-            peerLastSeenMillis.remove(playerId);
-        }
+    synchronized void removePeerAddress(String playerId) {
+        peerRegistry.remove(playerId);
     }
 
     /**
      * Registra que se recibió actividad reciente de un peer.
      */
-    public synchronized void markPeerSeen(String playerId) {
-        if (playerId != null) peerLastSeenMillis.put(playerId, System.currentTimeMillis());
+    synchronized void markPeerSeen(String playerId) {
+        peerRegistry.markSeen(playerId);
     }
 
     /**
@@ -237,10 +174,8 @@ public class SessionService {
      *
      * @return milisegundos desde el último mensaje o {@code null} si no hay dato
      */
-    public synchronized Long getPeerAgeMillis(String playerId) {
-        Long lastSeen = peerLastSeenMillis.get(playerId);
-        if (lastSeen == null) return null;
-        return Math.max(0L, System.currentTimeMillis() - lastSeen);
+    synchronized Long getPeerAgeMillis(String playerId) {
+        return peerRegistry.getAgeMillis(playerId);
     }
 
     /**
@@ -253,196 +188,424 @@ public class SessionService {
      * @param timeoutMillis tiempo máximo sin actividad
      * @return lista de identificadores expirados
      */
-    public synchronized List<String> expireInactivePeers(long timeoutMillis) {
-        long now = System.currentTimeMillis();
-        List<String> expired = new ArrayList<>();
-        for (Player player : players.values()) {
-            if (!player.isConnected()) continue;
-            if (Objects.equals(player.getId(), localPlayerId) && isHost) continue;
-            Long lastSeen = peerLastSeenMillis.get(player.getId());
-            if (lastSeen == null) continue;
-            if (now - lastSeen > timeoutMillis) {
-                player.setConnected(false);
-                peerAddresses.remove(player.getId());
-                expired.add(player.getId());
-            }
-        }
-        expired.forEach(peerLastSeenMillis::remove);
-        return expired;
+    synchronized List<String> expireInactivePeers(long timeoutMillis) {
+        return peerRegistry.expireInactivePlayers(
+            worldState.players(),
+            connectionState.getLocalPlayerId(),
+            connectionState.isHost(),
+            timeoutMillis
+        );
     }
 
     /**
      * Retorna una copia defensiva de los jugadores.
      */
     public synchronized List<Player> getPlayersSnapshot() {
-        List<Player> snapshot = new ArrayList<>();
-        for (Player player : players.values()) {
-            Player copy = new Player();
-            copy.setId(player.getId());
-            copy.setName(player.getName());
-            copy.setColor(player.getColor());
-            copy.setX(player.getX());
-            copy.setY(player.getY());
-            copy.setVx(player.getVx());
-            copy.setVy(player.getVy());
-            copy.setCoyoteTimer(player.getCoyoteTimer());
-            copy.setGrounded(player.isGrounded());
-            copy.setAlive(player.isAlive());
-            copy.setAtExit(player.isAtExit());
-            copy.setTargetX(player.getTargetX());
-            copy.setTargetY(player.getTargetY());
-            copy.setScore(player.getScore());
-            copy.setDeaths(player.getDeaths());
-            copy.setFinishOrder(player.getFinishOrder());
-            copy.setConnected(player.isConnected());
-            copy.setReady(player.isReady());
-            snapshot.add(copy);
-        }
-        return snapshot;
+        return viewFactory.copyPlayers(worldState.players().values());
     }
 
     /**
      * Retorna una copia defensiva de las plataformas del nivel.
      */
     public synchronized List<PlatformTile> getPlatformsSnapshot() {
-        List<PlatformTile> snapshot = new ArrayList<>();
-        for (PlatformTile platform : platforms) {
-            snapshot.add(new PlatformTile(platform.getId(), platform.getX(), platform.getY(), platform.getWidth(), platform.getHeight()));
-        }
-        return snapshot;
+        return viewFactory.copyPlatformTiles(worldState.platforms());
     }
 
     /**
      * Retorna una copia de los puntos de aparición del nivel.
      */
     public synchronized List<double[]> getSpawnPointsSnapshot() {
-        List<double[]> snapshot = new ArrayList<>();
-        for (double[] spawn : spawnPoints) snapshot.add(new double[]{spawn[0], spawn[1]});
-        return snapshot;
+        return viewFactory.copyPoints(worldState.spawnPoints());
     }
 
     /**
      * Retorna una copia defensiva de las plataformas especiales.
      */
     public synchronized List<PlatformTile> getSpecialPlatformsSnapshot() {
-        List<PlatformTile> snapshot = new ArrayList<>();
-        for (PlatformTile platform : specialPlatforms) {
-            snapshot.add(new PlatformTile(platform.getId(), platform.getX(), platform.getY(), platform.getWidth(), platform.getHeight()));
-        }
-        return snapshot;
+        return viewFactory.copyPlatformTiles(worldState.specialPlatforms());
     }
 
     /**
      * Retorna una copia defensiva de los hazards.
      */
     public synchronized List<PlatformTile> getHazardsSnapshot() {
-        List<PlatformTile> snapshot = new ArrayList<>();
-        for (PlatformTile hazard : hazards) {
-            snapshot.add(new PlatformTile(hazard.getId(), hazard.getX(), hazard.getY(), hazard.getWidth(), hazard.getHeight()));
-        }
-        return snapshot;
+        return viewFactory.copyPlatformTiles(worldState.hazards());
     }
 
     /**
      * Retorna una copia defensiva de los checkpoints.
      */
     public synchronized List<PlatformTile> getCheckpointsSnapshot() {
-        List<PlatformTile> snapshot = new ArrayList<>();
-        for (PlatformTile checkpoint : checkpoints) {
-            snapshot.add(new PlatformTile(checkpoint.getId(), checkpoint.getX(), checkpoint.getY(), checkpoint.getWidth(), checkpoint.getHeight()));
-        }
-        return snapshot;
+        return viewFactory.copyPlatformTiles(worldState.checkpoints());
     }
 
     /**
      * Retorna una copia defensiva del botón actual.
      */
     public synchronized ButtonSwitch getButtonSwitchSnapshot() {
-        if (buttonSwitch == null) return null;
-        ButtonSwitch copy = new ButtonSwitch(buttonSwitch.getId(), buttonSwitch.getX(), buttonSwitch.getY(), buttonSwitch.getWidth(), buttonSwitch.getHeight());
-        copy.setPressed(buttonSwitch.isPressed());
-        return copy;
+        return viewFactory.copyButton(worldState.buttonSwitch());
     }
 
     /**
      * Retorna una copia defensiva de la puerta actual.
      */
     public synchronized Door getDoorSnapshot() {
-        if (door == null) return null;
-        Door copy = new Door(door.getId(), door.getX(), door.getY(), door.getWidth(), door.getHeight());
-        copy.setOpen(door.isOpen());
-        return copy;
+        return viewFactory.copyDoor(worldState.door());
     }
 
     /**
      * Retorna una copia defensiva de la salida actual.
      */
     public synchronized ExitZone getExitZoneSnapshot() {
-        if (exitZone == null) return null;
-        return new ExitZone(exitZone.getX(), exitZone.getY(), exitZone.getWidth(), exitZone.getHeight());
+        return viewFactory.copyExitZone(worldState.exitZone());
     }
 
     /**
      * Retorna una copia defensiva de los bloques empujables.
      */
     public synchronized List<PushBlock> getPushBlocksSnapshot() {
-        List<PushBlock> snapshot = new ArrayList<>();
-        for (PushBlock block : pushBlocks) {
-            PushBlock copy = new PushBlock(block.getId(), block.getX(), block.getY(), block.getWidth(), block.getHeight());
-            copy.setVx(block.getVx());
-            copy.setVy(block.getVy());
-            copy.setHomeX(block.getHomeX());
-            copy.setHomeY(block.getHomeY());
-            snapshot.add(copy);
-        }
-        return snapshot;
+        return viewFactory.copyPushBlocks(worldState.pushBlocks());
     }
 
-    public String getLocalPlayerId() { return localPlayerId; }
-    public void setLocalPlayerId(String v) { this.localPlayerId = v; }
-    public String getLocalIp() { return localIp; }
-    public void setLocalIp(String v) { this.localIp = v; }
-    public int getLocalPort() { return localPort; }
-    public void setLocalPort(int v) { this.localPort = v; }
-    public String getHostIp() { return hostIp; }
-    public void setHostIp(String v) { this.hostIp = v; }
-    public int getHostPort() { return hostPort; }
-    public void setHostPort(int v) { this.hostPort = v; }
-    public boolean isHost() { return isHost; }
-    public void setHost(boolean v) { this.isHost = v; }
-    public String getPlayerName() { return playerName; }
-    public void setPlayerName(String v) { this.playerName = v; }
-    public int getExpectedPlayers() { return expectedPlayers; }
-    public void setExpectedPlayers(int v) { this.expectedPlayers = v; }
-    public Map<String, Player> getPlayers() { return players; }
-    public List<PlatformTile> getPlatforms() { return platforms; }
-    public List<PlatformTile> getSpecialPlatforms() { return specialPlatforms; }
-    public List<PlatformTile> getHazards() { return hazards; }
-    public List<PlatformTile> getCheckpoints() { return checkpoints; }
-    public List<double[]> getSpawnPoints() { return spawnPoints; }
-    public ButtonSwitch getButtonSwitch() { return buttonSwitch; }
-    public void setButtonSwitch(ButtonSwitch buttonSwitch) { this.buttonSwitch = buttonSwitch; }
-    public Door getDoor() { return door; }
-    public void setDoor(Door door) { this.door = door; }
-    public ExitZone getExitZone() { return exitZone; }
-    public void setExitZone(ExitZone exitZone) { this.exitZone = exitZone; }
-    public List<PushBlock> getPushBlocks() { return pushBlocks; }
-    public synchronized int getRoomResetCount() { return roomResetCount; }
-    public synchronized void setRoomResetCount(int roomResetCount) { this.roomResetCount = roomResetCount; }
-    public synchronized String getRoomResetReason() { return roomResetReason; }
-    public synchronized void setRoomResetReason(String roomResetReason) { this.roomResetReason = roomResetReason; }
-    public synchronized int getCurrentLevelIndex() { return currentLevelIndex; }
-    public synchronized void setCurrentLevelIndex(int currentLevelIndex) { this.currentLevelIndex = currentLevelIndex; }
-    public synchronized int getTotalLevels() { return totalLevels; }
-    public synchronized void setTotalLevels(int totalLevels) { this.totalLevels = totalLevels; }
-    public synchronized double getElapsedTime() { return elapsedTime; }
-    public synchronized void setElapsedTime(double elapsedTime) { this.elapsedTime = elapsedTime; }
-    public synchronized boolean isGameRunning() { return gameRunning; }
-    public synchronized void setGameRunning(boolean gameRunning) { this.gameRunning = gameRunning; }
-    public synchronized String getCurrentLevelName() { return currentLevelName; }
-    public synchronized void setCurrentLevelName(String currentLevelName) { this.currentLevelName = currentLevelName; }
-    public synchronized String getCurrentBackground() { return currentBackground; }
-    public synchronized void setCurrentBackground(String currentBackground) { this.currentBackground = currentBackground; }
-    public synchronized int getCurrentTileSize() { return currentTileSize; }
-    public synchronized void setCurrentTileSize(int currentTileSize) { this.currentTileSize = currentTileSize; }
+    /**
+     * Retorna el identificador único del jugador controlado localmente.
+     *
+     * @return id del jugador local o {@code null} si la sesión aún no fue inicializada
+     */
+    public synchronized String getLocalPlayerId() { return connectionState.getLocalPlayerId(); }
+
+    /**
+     * Configura la sesión local como host autoritativo.
+     *
+     * @param playerId id del jugador local
+     * @param playerName nombre visible del jugador local
+     * @param localIp IP del socket local
+     * @param localPort puerto del socket local
+     * @param expectedPlayers tamaño objetivo del lobby
+     */
+    synchronized void applyHostConfiguration(String playerId, String playerName, String localIp, int localPort, int expectedPlayers) {
+        clearSession();
+        connectionState.configureAsHost(playerId, playerName, localIp, localPort, expectedPlayers);
+        stateMachine.enterLobby();
+    }
+
+    /**
+     * Configura la sesión local como cliente de un host remoto.
+     *
+     * @param playerId id del jugador local
+     * @param playerName nombre visible del jugador local
+     * @param localIp IP del socket local
+     * @param localPort puerto del socket local
+     * @param hostIp IP del host autoritativo
+     * @param hostPort puerto del host autoritativo
+     */
+    synchronized void applyClientConfiguration(String playerId, String playerName, String localIp, int localPort,
+                                               String hostIp, int hostPort) {
+        clearSession();
+        connectionState.configureAsClient(playerId, playerName, localIp, localPort, hostIp, hostPort);
+        stateMachine.enterLobby();
+    }
+
+    /**
+     * Marca que la sesión salió del lobby y entró a gameplay.
+     */
+    synchronized void transitionToGameplay() {
+        stateMachine.enterGameplay();
+        matchState.enterGameplay();
+    }
+
+    /**
+     * Marca que la campaña terminó y debe mostrarse la pantalla final.
+     */
+    synchronized void transitionToGameOver() {
+        stateMachine.enterGameOver();
+        matchState.enterGameOver();
+    }
+
+    /**
+     * Retorna la fase macro actual de la sesión.
+     */
+    public synchronized SessionPhase getPhase() { return stateMachine.currentPhase(); }
+
+    /**
+     * Indica si la sesión está en la fase consultada.
+     */
+    public synchronized boolean isInPhase(SessionPhase phase) { return stateMachine.isIn(phase); }
+
+    /**
+     * Retorna la IP local declarada para esta instancia.
+     *
+     * @return IP usada para el bind local
+     */
+    public synchronized String getLocalIp() { return connectionState.getLocalIp(); }
+
+    /**
+     * Retorna el puerto local reservado para UDP.
+     *
+     * @return puerto local enlazado o esperado
+     */
+    public synchronized int getLocalPort() { return connectionState.getLocalPort(); }
+
+    /**
+     * Retorna la IP del host autoritativo conocida por esta instancia.
+     *
+     * @return IP del host de la partida
+     */
+    public synchronized String getHostIp() { return connectionState.getHostIp(); }
+
+    /**
+     * Retorna el puerto UDP del host autoritativo.
+     *
+     * @return puerto del host
+     */
+    public synchronized int getHostPort() { return connectionState.getHostPort(); }
+
+    /**
+     * Indica si esta instancia actúa como host autoritativo.
+     *
+     * @return {@code true} cuando la simulación local manda snapshots
+     */
+    public synchronized boolean isHost() { return connectionState.isHost(); }
+
+    /**
+     * Retorna el nombre visible configurado para el jugador local.
+     *
+     * @return nombre mostrado en lobby y marcador
+     */
+    public synchronized String getPlayerName() { return connectionState.getPlayerName(); }
+
+    /**
+     * Retorna la cantidad de jugadores que el host espera en el lobby.
+     *
+     * @return tamaño objetivo declarado para la sala
+     */
+    public synchronized int getExpectedPlayers() { return connectionState.getExpectedPlayers(); }
+
+    /**
+     * Expone el mapa mutable interno de jugadores para servicios de simulación.
+     *
+     * <p>Se mantiene con visibilidad de paquete para no filtrar esta estructura
+     * a controladores u otras capas externas.</p>
+     */
+    Map<String, Player> getPlayers() { return worldState.players(); }
+
+    /**
+     * Busca un jugador existente por id dentro del estado mutable actual.
+     *
+     * @param playerId identificador lógico del jugador
+     * @return jugador mutable o {@code null} si no existe
+     */
+    Player findPlayer(String playerId) { return worldState.players().get(playerId); }
+
+    /**
+     * Retorna la cantidad actual de jugadores conocidos por la sesión.
+     */
+    int getPlayerCount() { return worldState.players().size(); }
+
+    /**
+     * Expone las plataformas sólidas mutables del estado para la simulación.
+     */
+    List<PlatformTile> getPlatforms() { return worldState.platforms(); }
+
+    /**
+     * Expone las plataformas especiales mutables del estado para la simulación.
+     */
+    List<PlatformTile> getSpecialPlatforms() { return worldState.specialPlatforms(); }
+
+    /**
+     * Expone las zonas peligrosas mutables del nivel actual.
+     */
+    List<PlatformTile> getHazards() { return worldState.hazards(); }
+
+    /**
+     * Expone los checkpoints mutables del nivel actual.
+     */
+    List<PlatformTile> getCheckpoints() { return worldState.checkpoints(); }
+
+    /**
+     * Expone los puntos de aparición mutables del nivel actual.
+     */
+    List<double[]> getSpawnPoints() { return worldState.spawnPoints(); }
+
+    /**
+     * Expone el botón mutable del nivel para la simulación.
+     */
+    ButtonSwitch getButtonSwitch() { return worldState.buttonSwitch(); }
+
+    /**
+     * Reemplaza el botón activo del nivel.
+     *
+     * @param buttonSwitch nuevo botón o {@code null}
+     */
+    void setButtonSwitch(ButtonSwitch buttonSwitch) { worldState.setButtonSwitch(buttonSwitch); }
+
+    /**
+     * Expone la puerta mutable del nivel para la simulación.
+     */
+    Door getDoor() { return worldState.door(); }
+
+    /**
+     * Reemplaza la puerta activa del nivel.
+     *
+     * @param door nueva puerta o {@code null}
+     */
+    void setDoor(Door door) { worldState.setDoor(door); }
+
+    /**
+     * Expone la zona de salida mutable del nivel para la simulación.
+     */
+    ExitZone getExitZone() { return worldState.exitZone(); }
+
+    /**
+     * Reemplaza la salida activa del nivel.
+     *
+     * @param exitZone nueva salida o {@code null}
+     */
+    void setExitZone(ExitZone exitZone) { worldState.setExitZone(exitZone); }
+
+    /**
+     * Expone los bloques empujables mutables del nivel actual.
+     */
+    List<PushBlock> getPushBlocks() { return worldState.pushBlocks(); }
+
+    /**
+     * Retorna el slice interno del mundo para consumidores de la capa de aplicación.
+     */
+    SessionWorldState worldState() { return worldState; }
+
+    /**
+     * Retorna el slice interno de progreso para consumidores de la capa de aplicación.
+     */
+    SessionMatchState matchState() { return matchState; }
+
+    /**
+     * Retorna la máquina de estados interna de la sesión.
+     */
+    SessionStateMachine stateMachine() { return stateMachine; }
+
+    /**
+     * Retorna cuántas veces se reinició la sala actual.
+     *
+     * @return contador acumulado de reinicios de sala
+     */
+    public synchronized int getRoomResetCount() { return matchState.getRoomResetCount(); }
+
+    /**
+     * Actualiza el contador interno de reinicios de sala.
+     *
+     * @param roomResetCount nuevo contador absoluto
+     */
+    synchronized void setRoomResetCount(int roomResetCount) { matchState.setRoomResetCount(roomResetCount); }
+
+    /**
+     * Retorna la razón del último reinicio de sala.
+     *
+     * @return texto explicativo del último reset
+     */
+    public synchronized String getRoomResetReason() { return matchState.getRoomResetReason(); }
+
+    /**
+     * Actualiza la razón del último reinicio de sala.
+     *
+     * @param roomResetReason nuevo motivo del reset
+     */
+    synchronized void setRoomResetReason(String roomResetReason) { matchState.setRoomResetReason(roomResetReason); }
+
+    /**
+     * Retorna el índice base cero del nivel actual.
+     *
+     * @return índice interno del nivel en curso
+     */
+    public synchronized int getCurrentLevelIndex() { return matchState.getCurrentLevelIndex(); }
+
+    /**
+     * Actualiza el índice interno del nivel actual.
+     *
+     * @param currentLevelIndex nuevo índice base cero
+     */
+    synchronized void setCurrentLevelIndex(int currentLevelIndex) { matchState.setCurrentLevelIndex(currentLevelIndex); }
+
+    /**
+     * Retorna el total de niveles disponibles en la campaña actual.
+     *
+     * @return número total de niveles conocidos
+     */
+    public synchronized int getTotalLevels() { return matchState.getTotalLevels(); }
+
+    /**
+     * Actualiza el total de niveles disponibles en la campaña.
+     *
+     * @param totalLevels nuevo total conocido
+     */
+    synchronized void setTotalLevels(int totalLevels) { matchState.setTotalLevels(totalLevels); }
+
+    /**
+     * Retorna el tiempo total acumulado de la partida en segundos.
+     *
+     * @return tiempo de sesión visible para la HUD
+     */
+    public synchronized double getElapsedTime() { return matchState.getElapsedTime(); }
+
+    /**
+     * Actualiza el tiempo acumulado de partida.
+     *
+     * @param elapsedTime nuevo tiempo absoluto en segundos
+     */
+    synchronized void setElapsedTime(double elapsedTime) { matchState.setElapsedTime(elapsedTime); }
+
+    /**
+     * Indica si la partida está considerada activa.
+     *
+     * @return {@code true} mientras la campaña sigue en curso
+     */
+    public synchronized boolean isGameRunning() { return matchState.isGameRunning(); }
+
+    /**
+     * Cambia el estado global de ejecución de la partida.
+     *
+     * @param gameRunning nuevo estado global
+     */
+    synchronized void setGameRunning(boolean gameRunning) { matchState.setGameRunning(gameRunning); }
+
+    /**
+     * Retorna el nombre visible del nivel actual.
+     *
+     * @return nombre amigable del nivel en curso
+     */
+    public synchronized String getCurrentLevelName() { return matchState.getCurrentLevelName(); }
+
+    /**
+     * Actualiza el nombre visible del nivel actual.
+     *
+     * @param currentLevelName nuevo nombre del nivel
+     */
+    synchronized void setCurrentLevelName(String currentLevelName) { matchState.setCurrentLevelName(currentLevelName); }
+
+    /**
+     * Retorna el biome o fondo visual actualmente activo.
+     *
+     * @return clave del fondo actual
+     */
+    public synchronized String getCurrentBackground() { return matchState.getCurrentBackground(); }
+
+    /**
+     * Actualiza la clave del fondo visual del nivel actual.
+     *
+     * @param currentBackground nuevo identificador de fondo
+     */
+    synchronized void setCurrentBackground(String currentBackground) { matchState.setCurrentBackground(currentBackground); }
+
+    /**
+     * Retorna el tamaño lógico de tile del nivel actual.
+     *
+     * @return tamaño base de tile en unidades de mundo
+     */
+    public synchronized int getCurrentTileSize() { return matchState.getCurrentTileSize(); }
+
+    /**
+     * Actualiza el tamaño lógico de tile del nivel actual.
+     *
+     * @param currentTileSize nuevo tamaño base de tile
+     */
+    synchronized void setCurrentTileSize(int currentTileSize) { matchState.setCurrentTileSize(currentTileSize); }
 }

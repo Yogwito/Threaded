@@ -19,29 +19,54 @@ import java.util.function.Consumer;
 public final class ThreadConstraintService {
     private static final double THREAD_SOUND_COOLDOWN = 0.16;
 
-    private final SessionService sessionService;
+    private final SessionWorldState worldState;
     private final EventPublisher eventPublisher;
     private double threadSoundCooldownRemaining = 0;
 
-    public ThreadConstraintService(SessionService sessionService, EventPublisher eventPublisher) {
-        this.sessionService = sessionService;
+    /**
+     * Crea el servicio de restricción del hilo para la sesión actual.
+     *
+     * @param worldState estado del mundo del que se leen jugadores y sólidos
+     * @param eventPublisher publicador de eventos internos
+     */
+    public ThreadConstraintService(SessionWorldState worldState, EventPublisher eventPublisher) {
+        this.worldState = worldState;
         this.eventPublisher = eventPublisher;
     }
 
+    /**
+     * Reinicia cooldowns y estado transitorio del servicio.
+     */
     public void resetState() {
         threadSoundCooldownRemaining = 0;
     }
 
+    /**
+     * Avanza el cooldown del sonido asociado al estiramiento del hilo.
+     *
+     * @param dt delta temporal en segundos
+     */
     public void tickCooldowns(double dt) {
         threadSoundCooldownRemaining = Math.max(0, threadSoundCooldownRemaining - dt);
     }
 
+    /**
+     * Verifica si un jugador viola el límite duro respecto a sus vecinos.
+     *
+     * @param player jugador movido o evaluado
+     * @return {@code true} si excede el límite duro del hilo
+     */
     public boolean violatesAdjacentHardLimit(Player player) {
-        return GameRules.violatesAdjacentThreadHardLimit(player, sessionService.getPlayers().values());
+        return GameRules.violatesAdjacentThreadHardLimit(player, worldState.players().values());
     }
 
+    /**
+     * Cancela la componente de velocidad que sigue separando al jugador del hilo.
+     *
+     * @param player jugador sobre el que se corrige la velocidad
+     */
     public void cancelSeparatingVelocityAgainstThreadNeighbors(Player player) {
-        for (Player neighbor : GameRules.getThreadNeighbors(player, sessionService.getPlayers().values())) {
+        for (Player neighbor : GameRules.getThreadNeighbors(player, worldState.players().values())) {
             double dx = neighbor.getCenterX() - player.getCenterX();
             double dy = neighbor.getCenterY() - player.getCenterY();
             double distance = Math.sqrt(dx * dx + dy * dy);
@@ -87,7 +112,7 @@ public final class ThreadConstraintService {
             double separatingSpeed = Math.max(0, relativeVelocity);
             double closingSpeed = Math.max(0, -relativeVelocity);
             boolean obstructed = GameRules.isThreadObstructed(a, b,
-                sessionService.getPlatforms(), sessionService.getDoor(), sessionService.getPushBlocks(),
+                worldState.platforms(), worldState.door(), worldState.pushBlocks(),
                 GameConfig.THREAD_OBSTRUCTION_MARGIN);
 
             double aMobility = threadMobility(a);
@@ -184,17 +209,17 @@ public final class ThreadConstraintService {
             a,
             nx * correction * aShare,
             ny * correction * aShare * threadVerticalFactor(a),
-            sessionService.getPlatforms(),
-            sessionService.getDoor(),
-            sessionService.getPushBlocks()
+            worldState.platforms(),
+            worldState.door(),
+            worldState.pushBlocks()
         );
         ThreadCollisionHelper.applyValidatedDelta(
             b,
             -nx * correction * bShare,
             -ny * correction * bShare * threadVerticalFactor(b),
-            sessionService.getPlatforms(),
-            sessionService.getDoor(),
-            sessionService.getPushBlocks()
+            worldState.platforms(),
+            worldState.door(),
+            worldState.pushBlocks()
         );
     }
 }

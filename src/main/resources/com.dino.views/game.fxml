@@ -6,40 +6,52 @@
 <?import javafx.scene.control.ListView?>
 <?import javafx.scene.layout.BorderPane?>
 <?import javafx.scene.layout.HBox?>
-<?import javafx.scene.layout.Priority?>
 <?import javafx.scene.layout.StackPane?>
 <?import javafx.scene.layout.VBox?>
 
 <BorderPane xmlns="http://javafx.com/javafx/21"
             xmlns:fx="http://javafx.com/fxml/1"
             fx:controller="com.dino.presentation.controllers.GameController"
-            style="-fx-background-color: #1c1a22;">
+            style="-fx-background-color: linear-gradient(to bottom, #0d1420, #121a27 28%, #151c28 100%);">
     <top>
-        <HBox spacing="18" alignment="CENTER_LEFT"
-              style="-fx-background-color: #26232d; -fx-padding: 10 14; -fx-border-color: #4d4659; -fx-border-width: 0 0 2 0;">
-            <Label text="THREADED"
-                   style="-fx-text-fill: #e8dfcf; -fx-font-size: 22px; -fx-font-weight: bold; -fx-font-family: 'Monospaced';"/>
-            <Label fx:id="timerLabel"
-                   text="Tiempo: 0.0s"
-                   style="-fx-text-fill: #e8dfcf; -fx-font-size: 14px; -fx-font-family: 'Monospaced';"/>
-            <Label fx:id="levelLabel"
-                   text="Nivel 1/N"
-                   style="-fx-text-fill: #e8dfcf; -fx-font-size: 14px; -fx-font-family: 'Monospaced';"/>
-            <Label fx:id="roomStatusLabel"
-                   text="Llega a la meta evitando hazards"
-                   style="-fx-text-fill: #d1a35b; -fx-font-size: 14px; -fx-font-family: 'Monospaced';"/>
-            <Label fx:id="threadLabel"
-                   text="Hilo maximo: --"
-                   style="-fx-text-fill: #b8ad9a; -fx-font-size: 14px; -fx-font-family: 'Monospaced';"/>
-            <Label fx:id="networkLabel"
-                   text="UDP host autoritativo"
-                   style="-fx-text-fill: #b8ad9a; -fx-font-size: 14px; -fx-font-family: 'Monospaced';"/>
-        </HBox>
+        <VBox spacing="12"
+              style="-fx-background-color: rgba(10,15,24,0.94); -fx-padding: 14 18 16 18; -fx-border-color: rgba(76,100,126,0.8); -fx-border-width: 0 0 2 0;">
+            <HBox spacing="14" alignment="CENTER_LEFT">
+                <Label text="THREADED"
+                       style="-fx-text-fill: #f3f8ff; -fx-font-size: 24px; -fx-font-weight: bold; -fx-font-family: 'Monospaced';"/>
+                <Label text="co-op host autoritativo"
+                       style="-fx-text-fill: #8ecfff; -fx-font-size: 12px; -fx-font-family: 'Monospaced'; -fx-background-color: rgba(24,41,62,0.9); -fx-background-radius: 999; -fx-padding: 5 12 5 12;"/>
+            </HBox>
+            <HBox spacing="12" alignment="CENTER_LEFT">
+                <VBox spacing="4" prefWidth="104" style="-fx-background-color: rgba(19,28,40,0.95); -fx-background-radius: 16; -fx-border-radius: 16; -fx-border-color: #2f4459; -fx-border-width: 1.5; -fx-padding: 10 14 10 14;">
+                    <Label text="Tiempo" style="-fx-text-fill: #88a2be; -fx-font-size: 11px; -fx-font-family: 'Monospaced';"/>
+                    <Label fx:id="timerLabel" text="Tiempo: 0.0s"/>
+                </VBox>
+                <VBox spacing="4" prefWidth="180" style="-fx-background-color: rgba(19,28,40,0.95); -fx-background-radius: 16; -fx-border-radius: 16; -fx-border-color: #2f4459; -fx-border-width: 1.5; -fx-padding: 10 14 10 14;">
+                    <Label text="Nivel" style="-fx-text-fill: #88a2be; -fx-font-size: 11px; -fx-font-family: 'Monospaced';"/>
+                    <Label fx:id="levelLabel" text="Nivel 1/N"/>
+                </VBox>
+                <VBox spacing="4" prefWidth="214" style="-fx-background-color: rgba(19,28,40,0.95); -fx-background-radius: 16; -fx-border-radius: 16; -fx-border-color: #2f4459; -fx-border-width: 1.5; -fx-padding: 10 14 10 14;">
+                    <Label text="Estado de sala" style="-fx-text-fill: #88a2be; -fx-font-size: 11px; -fx-font-family: 'Monospaced';"/>
+                    <Label fx:id="roomStatusLabel" text="Sala estable" wrapText="true"/>
+                </VBox>
+                <VBox spacing="4" prefWidth="132" style="-fx-background-color: rgba(19,28,40,0.95); -fx-background-radius: 16; -fx-border-radius: 16; -fx-border-color: #2f4459; -fx-border-width: 1.5; -fx-padding: 10 14 10 14;">
+                    <Label text="Limite del hilo" style="-fx-text-fill: #88a2be; -fx-font-size: 11px; -fx-font-family: 'Monospaced';"/>
+                    <Label fx:id="threadLabel" text="Hilo maximo: --"/>
+                </VBox>
+                <VBox spacing="4" prefWidth="136" style="-fx-background-color: rgba(19,28,40,0.95); -fx-background-radius: 16; -fx-border-radius: 16; -fx-border-color: #2f4459; -fx-border-width: 1.5; -fx-padding: 10 14 10 14;">
+                    <Label text="Red" style="-fx-text-fill: #88a2be; -fx-font-size: 11px; -fx-font-family: 'Monospaced';"/>
+                    <Label fx:id="networkLabel" text="UDP host autoritativo" wrapText="true"/>
+                </VBox>
+            </HBox>
+        </VBox>
     </top>
 
     <center>
-        <StackPane style="-fx-padding: 14;">
-            <Canvas fx:id="arenaCanvas" width="960" height="640"/>
+        <StackPane style="-fx-padding: 16 16 16 18;">
+            <StackPane style="-fx-background-color: linear-gradient(to bottom, rgba(14,21,31,0.98), rgba(9,14,22,0.98)); -fx-background-radius: 24; -fx-border-radius: 24; -fx-border-color: rgba(83,110,138,0.78); -fx-border-width: 2; -fx-padding: 10;">
+                <Canvas fx:id="arenaCanvas" width="960" height="640"/>
+            </StackPane>
             <Label fx:id="feedbackLabel"
                    StackPane.alignment="TOP_CENTER"
                    visible="false"
@@ -48,17 +60,44 @@
     </center>
 
     <right>
-        <VBox spacing="12" prefWidth="250"
-              style="-fx-background-color: #26232d; -fx-padding: 14; -fx-border-color: #4d4659; -fx-border-width: 0 0 0 2;">
-            <Label text="Ranking en vivo"
-                   style="-fx-text-fill: #e8dfcf; -fx-font-size: 15px; -fx-font-weight: bold; -fx-font-family: 'Monospaced';"/>
-            <ListView fx:id="playersList" VBox.vgrow="ALWAYS"/>
-            <Label text="Eventos"
-                   style="-fx-text-fill: #e8dfcf; -fx-font-size: 15px; -fx-font-weight: bold; -fx-font-family: 'Monospaced';"/>
-            <ListView fx:id="eventLog" VBox.vgrow="ALWAYS"/>
-            <Label text="Controles: mueve el mouse para apuntar la direccion del personaje y click izquierdo para saltar. Los bloques, hazards y metas siguen una lectura de tile clara en toda la campana."
-                   wrapText="true"
-                   style="-fx-text-fill: #b8ad9a; -fx-font-size: 12px; -fx-font-family: 'Monospaced';"/>
+        <VBox spacing="14" prefWidth="296"
+              style="-fx-background-color: rgba(10,15,24,0.94); -fx-padding: 16 16 18 16; -fx-border-color: rgba(76,100,126,0.8); -fx-border-width: 0 0 0 2;">
+            <VBox spacing="8"
+                  style="-fx-background-color: rgba(18,27,39,0.98); -fx-background-radius: 18; -fx-border-radius: 18; -fx-border-color: #2e445b; -fx-border-width: 1.5; -fx-padding: 12;">
+                <Label text="Ranking en vivo"
+                       style="-fx-text-fill: #eef6ff; -fx-font-size: 15px; -fx-font-weight: bold; -fx-font-family: 'Monospaced';"/>
+                <Label text="Puntaje acumulado durante la campaña."
+                       wrapText="true"
+                       style="-fx-text-fill: #8da8c1; -fx-font-size: 11px; -fx-font-family: 'Monospaced';"/>
+                <ListView fx:id="playersList" prefHeight="190"
+                          style="-fx-control-inner-background: #111821; -fx-background-color: #111821; -fx-border-color: #2a3545; -fx-border-radius: 14; -fx-background-radius: 14; -fx-text-fill: #eef3f8; -fx-font-family: 'Monospaced'; -fx-fixed-cell-size: 30;"/>
+            </VBox>
+
+            <VBox spacing="8"
+                  style="-fx-background-color: rgba(18,27,39,0.98); -fx-background-radius: 18; -fx-border-radius: 18; -fx-border-color: #2e445b; -fx-border-width: 1.5; -fx-padding: 12;">
+                <Label text="Eventos"
+                       style="-fx-text-fill: #eef6ff; -fx-font-size: 15px; -fx-font-weight: bold; -fx-font-family: 'Monospaced';"/>
+                <Label text="Log corto de monedas, saltos y reinicios."
+                       wrapText="true"
+                       style="-fx-text-fill: #8da8c1; -fx-font-size: 11px; -fx-font-family: 'Monospaced';"/>
+                <ListView fx:id="eventLog" prefHeight="220"
+                          style="-fx-control-inner-background: #111821; -fx-background-color: #111821; -fx-border-color: #2a3545; -fx-border-radius: 14; -fx-background-radius: 14; -fx-text-fill: #eef3f8; -fx-font-family: 'Monospaced'; -fx-fixed-cell-size: 28;"/>
+            </VBox>
+
+            <VBox spacing="8"
+                  style="-fx-background-color: rgba(18,27,39,0.98); -fx-background-radius: 18; -fx-border-radius: 18; -fx-border-color: #2e445b; -fx-border-width: 1.5; -fx-padding: 12;">
+                <Label text="Controles"
+                       style="-fx-text-fill: #eef6ff; -fx-font-size: 14px; -fx-font-weight: bold; -fx-font-family: 'Monospaced';"/>
+                <Label text="Mouse: apunta y mueve"
+                       wrapText="true"
+                       style="-fx-text-fill: #a6b6c9; -fx-font-size: 12px; -fx-font-family: 'Monospaced';"/>
+                <Label text="Click izquierdo: salto"
+                       wrapText="true"
+                       style="-fx-text-fill: #a6b6c9; -fx-font-size: 12px; -fx-font-family: 'Monospaced';"/>
+                <Label text="Mantengan la cuerda en control y lleguen juntos a la salida."
+                       wrapText="true"
+                       style="-fx-text-fill: #ffd8a6; -fx-font-size: 12px; -fx-font-family: 'Monospaced'; -fx-background-color: rgba(63,46,22,0.45); -fx-background-radius: 12; -fx-padding: 8 10 8 10;"/>
+            </VBox>
         </VBox>
     </right>
 

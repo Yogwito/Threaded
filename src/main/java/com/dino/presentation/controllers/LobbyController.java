@@ -1,22 +1,19 @@
 package com.dino.presentation.controllers;
 
-import com.dino.application.runtime.AppContext;
-import com.dino.config.GameConfig;
-import com.dino.domain.entities.Player;
-import com.dino.domain.events.EventNames;
-import com.dino.infrastructure.serialization.MessageSerializer;
+import com.dino.application.services.LobbySignal;
+import com.dino.application.services.SubscriptionGroup;
+import com.dino.presentation.flow.LobbyScreenFlow;
+import com.dino.presentation.render.LobbyPreviewRenderer;
+import javafx.animation.AnimationTimer;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
+import javafx.scene.canvas.Canvas;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.ListView;
 
-import java.net.InetAddress;
-import java.net.InetSocketAddress;
 import java.net.URL;
-import java.util.List;
-import java.util.Map;
 import java.util.ResourceBundle;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -24,45 +21,81 @@ import java.util.TimerTask;
 /**
  * Controlador de la sala de espera previa a la partida.
  *
- * <p>Sincroniza la lista de jugadores, procesa mensajes básicos de lobby y
- * permite marcar estado de listo o arrancar la simulación cuando la instancia
- * local es host. También actúa como puente temporal entre la capa de red UDP y
- * la transición hacia la escena principal del juego.</p>
+ * <p>Sincroniza la lista de jugadores y delega el protocolo UDP del lobby en
+ * {@link LobbyScreenFlow}. El controlador conserva solo la gestión de la
+ * vista y el timer JavaFX-friendly.</p>
  */
-public class LobbyController implements Initializable, AppContextAware {
+public class LobbyController implements Initializable, LobbyScreenFlowAware, SceneLifecycleAware {
+    @FXML private Canvas lobbyPreviewCanvas;
     @FXML private ListView<String> playersList;
     @FXML private Button startBtn;
     @FXML private Label statusLabel;
+    @FXML private Label connectedSummaryLabel;
+    @FXML private Label readySummaryLabel;
+    @FXML private Label missingSummaryLabel;
 
-    private AppContext appContext;
+    private LobbyScreenFlow lobbyScreenFlow;
+    private final SubscriptionGroup subscriptions = new SubscriptionGroup();
+    private final LobbyPreviewRenderer previewRenderer = new LobbyPreviewRenderer();
     private Timer networkTimer;
-    private long lastLobbyBroadcastAt = 0;
-    private boolean startTransitionTriggered = false;
+    private AnimationTimer previewLoop;
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
-    public void setAppContext(AppContext appContext) {
-        this.appContext = appContext;
+    public void setLobbyScreenFlow(LobbyScreenFlow lobbyScreenFlow) {
+        this.lobbyScreenFlow = lobbyScreenFlow;
     }
 
+    /**
+     * Configura los widgets base de la escena del lobby.
+     *
+     * <p>Las suscripciones y el polling de red arrancan después, cuando la
+     * escena queda activa, para poder liberarlos limpiamente al abandonarla.</p>
+     */
     @Override
     public void initialize(URL url, ResourceBundle rb) {
-        startBtn.setVisible(appContext.session().isHost());
+        startBtn.setVisible(lobbyScreenFlow.isHost());
+        refreshLobbyView();
+    }
 
-        appContext.events().subscribe(EventNames.PLAYER_JOINED, e -> refreshPlayerList());
-        appContext.events().subscribe(EventNames.PLAYER_READY, e -> refreshPlayerList());
-        appContext.events().subscribe(EventNames.SNAPSHOT_RECEIVED, e -> refreshPlayerList());
-
-        refreshPlayerList();
+    /**
+     * Arranca el ciclo de vida activo del lobby actual.
+     */
+    @Override
+    public void onSceneShown() {
+        lobbyScreenFlow.activate();
+        subscriptions.add(lobbyScreenFlow.bindLobbyUpdates(this::refreshLobbyView));
+        refreshLobbyView();
+        startPreviewLoop();
         startNetworkLoop();
     }
 
-    private void refreshPlayerList() {
+    /**
+     * Libera listeners y timers temporales asociados al lobby.
+     */
+    @Override
+    public void onSceneHidden() {
+        subscriptions.clear();
+        if (networkTimer != null) {
+            networkTimer.cancel();
+            networkTimer = null;
+        }
+        if (previewLoop != null) {
+            previewLoop.stop();
+            previewLoop = null;
+        }
+    }
+
+    /**
+     * Reconstituye la lista visible de jugadores a partir del snapshot actual.
+     */
+    private void refreshLobbyView() {
         Platform.runLater(() -> {
-            playersList.getItems().clear();
-            for (Player p : appContext.session().getPlayersSnapshot()) {
-                String state = p.isReady() ? " listo" : (p.isConnected() ? " conectado" : " desconectado");
-                playersList.getItems().add(p.getName() + " [" + state + "]");
-            }
+            playersList.getItems().setAll(lobbyScreenFlow.playerEntries());
+            updateSummaryLabels();
+            renderLobbyPreview(0);
         });
     }
 
@@ -71,24 +104,12 @@ public class LobbyController implements Initializable, AppContextAware {
      */
     @FXML
     public void onListo() {
-        if (appContext.session().isHost()) {
-            appContext.session().markPlayerReady(appContext.session().getLocalPlayerId(), true);
-            appContext.events().publish(EventNames.PLAYER_READY, Map.of("playerId", appContext.session().getLocalPlayerId()));
-            broadcastLobbySnapshot();
-            statusLabel.setText("Host listo. Esperando más jugadores...");
-        } else {
-            try {
-                Map<String, Object> msg = appContext.serializer().build(
-                    MessageSerializer.READY,
-                    "playerId", appContext.session().getLocalPlayerId()
-                );
-                appContext.networkPeer().send(msg,
-                    InetAddress.getByName(appContext.session().getHostIp()),
-                    appContext.session().getHostPort());
-                statusLabel.setText("Listo! Esperando al host...");
-            } catch (Exception e) {
-                statusLabel.setText("Error: " + e.getMessage());
-            }
+        try {
+            lobbyScreenFlow.markLocalReady();
+            statusLabel.setText(lobbyScreenFlow.readyStatusMessage());
+            updateSummaryLabels();
+        } catch (Exception e) {
+            statusLabel.setText("Error: " + e.getMessage());
         }
     }
 
@@ -101,17 +122,13 @@ public class LobbyController implements Initializable, AppContextAware {
      */
     @FXML
     public void onIniciarPartida() {
-        if (!appContext.session().isHost()) return;
+        if (!lobbyScreenFlow.isHost()) return;
         try {
-            var hostMatchService = appContext.createHostMatchService();
-            hostMatchService.initWorld();
-            Map<String, Object> startMessage = appContext.session().getSnapshotData();
-            startMessage.put("type", MessageSerializer.START_GAME);
-            appContext.networkPeer().broadcastBurst(startMessage, appContext.session().getRemotePeerAddresses(),
-                GameConfig.CRITICAL_BROADCAST_REPEATS, GameConfig.CRITICAL_BROADCAST_DELAY_MS);
-            appContext.events().publish(EventNames.GAME_STARTED, Map.of());
-            if (networkTimer != null) networkTimer.cancel();
-            appContext.navigator().showGame();
+            lobbyScreenFlow.startGame();
+            if (networkTimer != null) {
+                networkTimer.cancel();
+                networkTimer = null;
+            }
         } catch (Exception e) {
             statusLabel.setText("Error: " + e.getMessage());
         }
@@ -125,90 +142,62 @@ public class LobbyController implements Initializable, AppContextAware {
         networkTimer.scheduleAtFixedRate(new TimerTask() {
             @Override
             public void run() {
-                if (appContext.networkPeer() == null || !appContext.networkPeer().isBound()) return;
-                if (appContext.session().isHost()) broadcastLobbySnapshotIfDue();
-                var received = appContext.networkPeer().receive();
-                received.ifPresent(entry -> handleMessage(entry.getKey(), entry.getValue()));
+                LobbySignal signal = lobbyScreenFlow.pollNetworkTick();
+                handleSignal(signal);
             }
         }, 0, 100);
     }
 
-    private void handleMessage(Map<String, Object> msg, InetSocketAddress sender) {
-        String type = (String) msg.get("type");
-        if (type == null) return;
-
-        if (appContext.session().isHost()) {
-            handleHostMessage(type, msg, sender);
-            return;
-        }
-
-        if (MessageSerializer.START_GAME.equals(type)) {
-            if (startTransitionTriggered) return;
-            startTransitionTriggered = true;
-            appContext.session().updateFromSnapshot(msg);
+    /**
+     * Resuelve las transiciones de UI derivadas del protocolo de lobby.
+     *
+     * @param signal señal producida por el coordinador
+     */
+    private void handleSignal(LobbySignal signal) {
+        if (signal == LobbySignal.START_GAME) {
             Platform.runLater(() -> {
                 try {
-                    if (networkTimer != null) networkTimer.cancel();
-                    appContext.events().publish(EventNames.GAME_STARTED, Map.of());
-                    appContext.navigator().showGame();
+                    if (networkTimer != null) {
+                        networkTimer.cancel();
+                        networkTimer = null;
+                    }
+                    lobbyScreenFlow.handleSignal(signal);
                 } catch (Exception e) {
                     statusLabel.setText("Error: " + e.getMessage());
                 }
             });
-        } else if (MessageSerializer.LOBBY_SNAPSHOT.equals(type)) {
-            appContext.session().updateFromSnapshot(msg);
         }
     }
 
-    private void handleHostMessage(String type, Map<String, Object> msg, InetSocketAddress sender) {
-        if (MessageSerializer.JOIN.equals(type)) {
-            String playerId = (String) msg.get("playerId");
-            String name = (String) msg.getOrDefault("name", "Jugador");
-            if (playerId == null || playerId.isBlank()) return;
-
-            Player player = appContext.session().getPlayers().get(playerId);
-            if (player == null) {
-                player = new Player(playerId, name, nextPlayerColor());
-                appContext.session().addPlayer(player);
-            } else {
-                player.setName(name);
-                player.setConnected(true);
+    private void startPreviewLoop() {
+        previewLoop = new AnimationTimer() {
+            @Override
+            public void handle(long now) {
+                renderLobbyPreview(now / 1_000_000_000.0);
             }
-            appContext.session().registerPeerAddress(playerId, sender);
-            appContext.events().publish(EventNames.PLAYER_JOINED, Map.of("playerId", playerId, "name", name));
-            broadcastLobbySnapshot();
-        } else if (MessageSerializer.READY.equals(type)) {
-            String playerId = (String) msg.get("playerId");
-            appContext.session().markPlayerReady(playerId, true);
-            appContext.events().publish(EventNames.PLAYER_READY, msg);
-            Platform.runLater(() -> statusLabel.setText("Jugador listo: " + msg.getOrDefault("playerId", "?")));
-            broadcastLobbySnapshot();
-        } else if (MessageSerializer.DISCONNECT.equals(type)) {
-            String playerId = (String) msg.get("playerId");
-            appContext.session().removePlayer(playerId);
-            Platform.runLater(() -> statusLabel.setText("Jugador desconectado: " + msg.getOrDefault("playerId", "?")));
-            broadcastLobbySnapshot();
-        }
+        };
+        previewLoop.start();
     }
 
-    private void broadcastLobbySnapshotIfDue() {
-        long now = System.currentTimeMillis();
-        if (now - lastLobbyBroadcastAt < 250) return;
-        broadcastLobbySnapshot();
-        lastLobbyBroadcastAt = now;
+    private void renderLobbyPreview(double timeSeconds) {
+        previewRenderer.render(
+            lobbyPreviewCanvas,
+            lobbyScreenFlow.playerSnapshots(),
+            lobbyScreenFlow.expectedPlayers(),
+            timeSeconds
+        );
     }
 
-    private void broadcastLobbySnapshot() {
-        List<InetSocketAddress> remotes = appContext.session().getRemotePeerAddresses();
-        if (remotes.isEmpty()) return;
-        Map<String, Object> snapshot = appContext.session().getSnapshotData();
-        snapshot.put("type", MessageSerializer.LOBBY_SNAPSHOT);
-        appContext.networkPeer().broadcast(snapshot, remotes);
-    }
+    private void updateSummaryLabels() {
+        int expectedPlayers = lobbyScreenFlow.expectedPlayers();
+        int connectedPlayers = lobbyScreenFlow.connectedPlayersCount();
+        int readyPlayers = lobbyScreenFlow.readyPlayersCount();
+        int missingPlayers = Math.max(0, expectedPlayers - connectedPlayers);
 
-    private String nextPlayerColor() {
-        String[] colors = {"red", "blue", "green", "yellow"};
-        int index = Math.max(0, appContext.session().getPlayers().size()) % colors.length;
-        return colors[index];
+        connectedSummaryLabel.setText("Conectados: " + connectedPlayers + "/" + expectedPlayers);
+        readySummaryLabel.setText("Listos: " + readyPlayers + "/" + connectedPlayers);
+        missingSummaryLabel.setText(missingPlayers == 0
+            ? "Lobby completo"
+            : "Faltan " + missingPlayers + " jugador(es)");
     }
 }

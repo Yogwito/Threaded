@@ -34,6 +34,12 @@
             <artifactId>jackson-databind</artifactId>
             <version>${jackson.version}</version>
         </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <version>5.11.4</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>
@@ -53,12 +59,18 @@
                 <configuration>
                     <mainClass>com.dino.MainApp</mainClass>
                     <jvmArgs>
+                        <jvmArg>--enable-native-access=javafx.graphics</jvmArg>
                         <jvmArg>-Djava.net.preferIPv4Stack=true</jvmArg>
                         <jvmArg>-Djava.net.preferIPv4Addresses=true</jvmArg>
                         <jvmArg>-Dprism.allowhidpi=false</jvmArg>
                         <jvmArg>-Dglass.win.uiScale=1.0</jvmArg>
                     </jvmArgs>
                 </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>3.5.2</version>
             </plugin>
         </plugins>
     </build>

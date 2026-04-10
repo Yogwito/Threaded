@@ -1,8 +1,6 @@
 package com.dino.presentation.controllers;
 
-import com.dino.application.runtime.AppContext;
-import com.dino.application.usecases.CreateSessionUseCase;
-import com.dino.application.usecases.JoinSessionUseCase;
+import com.dino.presentation.flow.StartMenuFlow;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.control.ChoiceBox;
@@ -20,10 +18,10 @@ import java.util.ResourceBundle;
  *
  * <p>Recoge los datos básicos de red y del jugador, decide si la instancia
  * actuará como host o cliente y delega la creación o unión de la sesión a los
- * casos de uso de aplicación. Después abre la vista de lobby con el
- * {@link AppContext} ya inicializado.</p>
+ * flujo de aplicación específico del menú inicial. Después abre la vista de
+ * lobby con el runtime ya inicializado.</p>
  */
-public class StartMenuController implements Initializable, AppContextAware {
+public class StartMenuController implements Initializable, StartMenuFlowAware {
     @FXML private TextField playerNameField;
     @FXML private RadioButton createRadio;
     @FXML private RadioButton joinRadio;
@@ -36,13 +34,19 @@ public class StartMenuController implements Initializable, AppContextAware {
     @FXML private ChoiceBox<Integer> expectedPlayersChoice;
     @FXML private Label errorLabel;
 
-    private AppContext appContext;
+    private StartMenuFlow startMenuFlow;
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
-    public void setAppContext(AppContext appContext) {
-        this.appContext = appContext;
+    public void setStartMenuFlow(StartMenuFlow startMenuFlow) {
+        this.startMenuFlow = startMenuFlow;
     }
 
+    /**
+     * Inicializa el formulario base y adapta los campos al modo elegido.
+     */
     @Override
     public void initialize(URL url, ResourceBundle rb) {
         expectedPlayersChoice.getItems().addAll(2, 3, 4);
@@ -80,13 +84,10 @@ public class StartMenuController implements Initializable, AppContextAware {
             return;
         }
 
-        var networkPeer = appContext.openNetworkPeer();
-
         try {
             if (createRadio.isSelected()) {
                 int expected = expectedPlayersChoice.getValue();
-                new CreateSessionUseCase(appContext.session(), networkPeer, appContext.events())
-                    .execute(name, localIp, localPort, expected);
+                startMenuFlow.createLobby(name, localIp, localPort, expected);
             } else {
                 String hostIp = hostIpField.getText().trim();
                 if (hostIp.isEmpty()) {
@@ -100,13 +101,9 @@ public class StartMenuController implements Initializable, AppContextAware {
                     showError("Puerto host inválido.");
                     return;
                 }
-                new JoinSessionUseCase(appContext.session(), networkPeer, appContext.serializer(), appContext.events())
-                    .execute(name, localIp, localPort, hostIp, hostPort);
+                startMenuFlow.joinLobby(name, localIp, localPort, hostIp, hostPort);
             }
-
-            appContext.navigator().showLobby();
         } catch (Exception e) {
-            appContext.shutdownNetworking();
             showError("Error al conectar: " + e.getMessage());
         }
     }

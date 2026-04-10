@@ -1,12 +1,14 @@
 package com.dino.infrastructure.network;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.dino.infrastructure.serialization.MessageCodec;
 
 import java.io.IOException;
 import java.net.*;
 import java.net.Inet4Address;
 import java.net.InetSocketAddress;
 import java.util.*;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * Adaptador mínimo sobre {@link DatagramSocket} para la comunicación UDP.
@@ -17,10 +19,20 @@ import java.util.*;
  * transporte.</p>
  */
 public class UdpPeer implements NetworkPeer {
+    private static final Logger LOGGER = Logger.getLogger(UdpPeer.class.getName());
     private DatagramSocket socket;
-    private final ObjectMapper mapper = new ObjectMapper();
+    private final MessageCodec codec;
     private static final int BUFFER_SIZE = 65535;
     private final byte[] receiveBuffer = new byte[BUFFER_SIZE];
+
+    /**
+     * Crea un peer UDP respaldado por el codec de mensajes indicado.
+     *
+     * @param codec estrategia usada para codificar y decodificar mensajes
+     */
+    public UdpPeer(MessageCodec codec) {
+        this.codec = codec;
+    }
 
     /**
      * Enlaza el socket UDP local.
@@ -49,11 +61,16 @@ public class UdpPeer implements NetworkPeer {
      * @param port puerto destino
      */
     public void send(Map<String, Object> data, InetAddress addr, int port) {
+        if (socket == null || socket.isClosed()) {
+            LOGGER.log(Level.FINE, "Se ignora envio UDP porque el socket no esta activo");
+            return;
+        }
         try {
-            byte[] bytes = mapper.writeValueAsBytes(data);
+            byte[] bytes = codec.serialize(data);
             socket.send(new DatagramPacket(bytes, bytes.length, addr, port));
         } catch (IOException e) {
-            System.err.println("[UdpPeer] Send error: " + e.getMessage());
+            LOGGER.log(Level.WARNING, "Error enviando UDP a {0}:{1}", new Object[]{addr, port});
+            LOGGER.log(Level.FINE, "Detalle del fallo de envio UDP", e);
         }
     }
 
@@ -111,12 +128,15 @@ public class UdpPeer implements NetworkPeer {
             DatagramPacket packet = new DatagramPacket(receiveBuffer, receiveBuffer.length);
             socket.receive(packet);
             byte[] data = Arrays.copyOf(packet.getData(), packet.getLength());
-            Map<String, Object> msg = mapper.readValue(data, Map.class);
+            Map<String, Object> msg = codec.deserialize(data);
             InetSocketAddress sender = new InetSocketAddress(packet.getAddress(), packet.getPort());
             return Optional.of(Map.entry(msg, sender));
         } catch (SocketTimeoutException e) {
             return Optional.empty();
         } catch (IOException e) {
+            if (socket != null && !socket.isClosed()) {
+                LOGGER.log(Level.FINE, "Fallo recibiendo UDP", e);
+            }
             return Optional.empty();
         }
     }

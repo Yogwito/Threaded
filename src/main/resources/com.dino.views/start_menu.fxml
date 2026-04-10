@@ -1,118 +1,145 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<?import javafx.scene.control.*?>
-<?import javafx.scene.layout.*?>
-<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.ChoiceBox?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.RadioButton?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.control.ToggleGroup?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.ColumnConstraints?>
+<?import javafx.scene.layout.GridPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
 
-<VBox xmlns="http://javafx.com/javafx/21"
-      xmlns:fx="http://javafx.com/fxml/1"
-      fx:controller="com.dino.presentation.controllers.StartMenuController"
-      alignment="CENTER"
-      spacing="20"
-      style="-fx-background-color: #0f1724; -fx-padding: 60;">
+<BorderPane xmlns="http://javafx.com/javafx/21"
+            xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="com.dino.presentation.controllers.StartMenuController"
+            style="-fx-background-color: linear-gradient(to bottom, #09101b, #121b2b 36%, #162132 100%);">
+    <center>
+        <HBox spacing="28" alignment="CENTER" style="-fx-padding: 40 48;">
+            <VBox spacing="14" prefWidth="420"
+                  style="-fx-background-color: rgba(14,21,32,0.95); -fx-background-radius: 28; -fx-border-radius: 28; -fx-border-color: #36506a; -fx-border-width: 2; -fx-padding: 28;">
+                <Label text="THREADED"
+                       style="-fx-font-size: 52px; -fx-font-weight: bold; -fx-text-fill: #eef4fb; -fx-font-family: 'Monospaced';"/>
+                <Label text="Cooperativo 2D por salas"
+                       style="-fx-font-size: 18px; -fx-text-fill: #88cdfd; -fx-font-family: 'Monospaced';"/>
+                <Label text="Muervanse juntos, tensen la cuerda con cuidado y lleguen en equipo a cada salida."
+                       wrapText="true"
+                       style="-fx-font-size: 13px; -fx-text-fill: #a5b5c8; -fx-font-family: 'Monospaced';"/>
+                <Label text="UDP local | host autoritativo | campana cooperativa"
+                       style="-fx-font-size: 12px; -fx-text-fill: #8fe4ff; -fx-font-family: 'Monospaced'; -fx-background-color: rgba(17,41,63,0.9); -fx-background-radius: 999; -fx-padding: 6 12 6 12;"/>
 
-    <Label text="THREADED"
-           style="-fx-font-size: 56px; -fx-font-weight: bold; -fx-text-fill: white;"/>
+                <VBox spacing="10" style="-fx-background-color: #121924; -fx-background-radius: 20; -fx-border-radius: 20; -fx-border-color: rgba(57,79,104,0.9); -fx-border-width: 1.2; -fx-padding: 16;">
+                    <Label text="Como se juega"
+                           style="-fx-text-fill: #eef4fb; -fx-font-size: 15px; -fx-font-weight: bold; -fx-font-family: 'Monospaced';"/>
+                    <Label text="1. Crea o unete a una sala por UDP local."
+                           wrapText="true"
+                           style="-fx-text-fill: #8fa1b6; -fx-font-size: 12px; -fx-font-family: 'Monospaced';"/>
+                    <Label text="2. Usa el mouse para mover y click izquierdo para saltar."
+                           wrapText="true"
+                           style="-fx-text-fill: #8fa1b6; -fx-font-size: 12px; -fx-font-family: 'Monospaced';"/>
+                    <Label text="3. Recoge monedas, evita hazards y llega con todos a la salida."
+                           wrapText="true"
+                           style="-fx-text-fill: #8fa1b6; -fx-font-size: 12px; -fx-font-family: 'Monospaced';"/>
+                </VBox>
+            </VBox>
 
-    <Label text="Cooperativo 2D por salas"
-           style="-fx-font-size: 18px; -fx-text-fill: #4cc9f0; -fx-font-style: italic;"/>
+            <VBox spacing="18" prefWidth="470"
+                  style="-fx-background-color: rgba(14,21,32,0.96); -fx-background-radius: 28; -fx-border-radius: 28; -fx-border-color: #36506a; -fx-border-width: 2; -fx-padding: 28;">
+                <VBox spacing="8">
+                    <Label text="Nombre del jugador"
+                           style="-fx-text-fill: #aab8c8; -fx-font-size: 13px; -fx-font-family: 'Monospaced';"/>
+                    <TextField fx:id="playerNameField"
+                               promptText="Tu nombre"
+                               style="-fx-background-color: #121923; -fx-text-fill: #eef4fb; -fx-prompt-text-fill: #627286; -fx-border-color: #3b5874; -fx-border-radius: 12; -fx-background-radius: 12; -fx-padding: 10; -fx-font-size: 14px; -fx-font-family: 'Monospaced';"/>
+                </VBox>
 
-    <VBox spacing="8" maxWidth="400" style="-fx-padding: 20 0 10 0;">
-        <Label text="Nombre del jugador"
-               style="-fx-text-fill: #aaaacc; -fx-font-size: 13px;"/>
-        <TextField fx:id="playerNameField"
-                   promptText="Tu nombre"
-                   style="-fx-background-color: #16213e; -fx-text-fill: white; -fx-prompt-text-fill: #666699;
-                          -fx-border-color: #4cc9f0; -fx-border-radius: 4; -fx-background-radius: 4;
-                          -fx-padding: 10; -fx-font-size: 14px;"/>
-    </VBox>
+                <HBox spacing="24" alignment="CENTER_LEFT">
+                    <RadioButton fx:id="createRadio"
+                                 text="Crear sala"
+                                 style="-fx-text-fill: #eef4fb; -fx-font-size: 14px; -fx-font-family: 'Monospaced';"
+                                 selected="true">
+                        <toggleGroup>
+                            <ToggleGroup fx:id="modeToggle"/>
+                        </toggleGroup>
+                    </RadioButton>
 
-    <HBox spacing="24" alignment="CENTER">
-        <RadioButton fx:id="createRadio"
-                     text="Crear sala"
-                     style="-fx-text-fill: white; -fx-font-size: 14px;"
-                     selected="true">
-            <toggleGroup>
-                <ToggleGroup fx:id="modeToggle"/>
-            </toggleGroup>
-        </RadioButton>
+                    <RadioButton fx:id="joinRadio"
+                                 text="Unirse"
+                                 style="-fx-text-fill: #eef4fb; -fx-font-size: 14px; -fx-font-family: 'Monospaced';">
+                        <toggleGroup>
+                            <fx:reference source="modeToggle"/>
+                        </toggleGroup>
+                    </RadioButton>
+                </HBox>
 
-        <RadioButton fx:id="joinRadio"
-                     text="Unirse"
-                     style="-fx-text-fill: white; -fx-font-size: 14px;">
-            <toggleGroup>
-                <fx:reference source="modeToggle"/>
-            </toggleGroup>
-        </RadioButton>
-    </HBox>
+                <GridPane hgap="16" vgap="12">
+                    <columnConstraints>
+                        <ColumnConstraints minWidth="140" prefWidth="150"/>
+                        <ColumnConstraints minWidth="220" prefWidth="250"/>
+                    </columnConstraints>
 
-    <GridPane hgap="16" vgap="10" maxWidth="500" style="-fx-padding: 10 0;">
-        <columnConstraints>
-            <ColumnConstraints minWidth="140" prefWidth="140"/>
-            <ColumnConstraints minWidth="200" prefWidth="200"/>
-        </columnConstraints>
+                    <Label text="IP local"
+                           style="-fx-text-fill: #aab8c8; -fx-font-family: 'Monospaced';"
+                           GridPane.rowIndex="0"
+                           GridPane.columnIndex="0"/>
+                    <TextField fx:id="localIpField"
+                               text="0.0.0.0"
+                               style="-fx-background-color: #121923; -fx-text-fill: #eef4fb; -fx-border-color: #314f69; -fx-border-radius: 10; -fx-background-radius: 10; -fx-padding: 8; -fx-font-family: 'Monospaced';"
+                               GridPane.rowIndex="0"
+                               GridPane.columnIndex="1"/>
 
-        <Label text="IP local:"
-               style="-fx-text-fill: #aaaacc;"
-               GridPane.rowIndex="0"
-               GridPane.columnIndex="0"/>
-        <TextField fx:id="localIpField"
-                   text="0.0.0.0"
-                   style="-fx-background-color: #16213e; -fx-text-fill: white; -fx-border-color: #333366;
-                          -fx-border-radius: 4; -fx-background-radius: 4; -fx-padding: 8;"
-                   GridPane.rowIndex="0"
-                   GridPane.columnIndex="1"/>
+                    <Label text="Puerto local"
+                           style="-fx-text-fill: #aab8c8; -fx-font-family: 'Monospaced';"
+                           GridPane.rowIndex="1"
+                           GridPane.columnIndex="0"/>
+                    <TextField fx:id="localPortField"
+                               text="5000"
+                               style="-fx-background-color: #121923; -fx-text-fill: #eef4fb; -fx-border-color: #314f69; -fx-border-radius: 10; -fx-background-radius: 10; -fx-padding: 8; -fx-font-family: 'Monospaced';"
+                               GridPane.rowIndex="1"
+                               GridPane.columnIndex="1"/>
 
-        <Label text="Puerto local:"
-               style="-fx-text-fill: #aaaacc;"
-               GridPane.rowIndex="1"
-               GridPane.columnIndex="0"/>
-        <TextField fx:id="localPortField"
-                   text="5000"
-                   style="-fx-background-color: #16213e; -fx-text-fill: white; -fx-border-color: #333366;
-                          -fx-border-radius: 4; -fx-background-radius: 4; -fx-padding: 8;"
-                   GridPane.rowIndex="1"
-                   GridPane.columnIndex="1"/>
+                    <Label text="IP host"
+                           style="-fx-text-fill: #aab8c8; -fx-font-family: 'Monospaced';"
+                           GridPane.rowIndex="2"
+                           GridPane.columnIndex="0"/>
+                    <TextField fx:id="hostIpField"
+                               promptText="192.168.x.x"
+                               style="-fx-background-color: #121923; -fx-text-fill: #eef4fb; -fx-prompt-text-fill: #627286; -fx-border-color: #314f69; -fx-border-radius: 10; -fx-background-radius: 10; -fx-padding: 8; -fx-font-family: 'Monospaced';"
+                               GridPane.rowIndex="2"
+                               GridPane.columnIndex="1"/>
 
-        <Label text="IP host:"
-               style="-fx-text-fill: #aaaacc;"
-               GridPane.rowIndex="2"
-               GridPane.columnIndex="0"/>
-        <TextField fx:id="hostIpField"
-                   promptText="192.168.x.x"
-                   style="-fx-background-color: #16213e; -fx-text-fill: white; -fx-prompt-text-fill: #555588;
-                          -fx-border-color: #333366; -fx-border-radius: 4; -fx-background-radius: 4; -fx-padding: 8;"
-                   GridPane.rowIndex="2"
-                   GridPane.columnIndex="1"/>
+                    <Label text="Puerto host"
+                           style="-fx-text-fill: #aab8c8; -fx-font-family: 'Monospaced';"
+                           GridPane.rowIndex="3"
+                           GridPane.columnIndex="0"/>
+                    <TextField fx:id="hostPortField"
+                               text="5000"
+                               style="-fx-background-color: #121923; -fx-text-fill: #eef4fb; -fx-border-color: #314f69; -fx-border-radius: 10; -fx-background-radius: 10; -fx-padding: 8; -fx-font-family: 'Monospaced';"
+                               GridPane.rowIndex="3"
+                               GridPane.columnIndex="1"/>
+                </GridPane>
 
-        <Label text="Puerto host:"
-               style="-fx-text-fill: #aaaacc;"
-               GridPane.rowIndex="3"
-               GridPane.columnIndex="0"/>
-        <TextField fx:id="hostPortField"
-                   text="5000"
-                   style="-fx-background-color: #16213e; -fx-text-fill: white; -fx-border-color: #333366;
-                          -fx-border-radius: 4; -fx-background-radius: 4; -fx-padding: 8;"
-                   GridPane.rowIndex="3"
-                   GridPane.columnIndex="1"/>
-    </GridPane>
+                <HBox fx:id="expectedPlayersBox" spacing="12" alignment="CENTER_LEFT"
+                      style="-fx-background-color: #121923; -fx-background-radius: 16; -fx-border-radius: 16; -fx-border-color: rgba(57,79,104,0.9); -fx-border-width: 1.2; -fx-padding: 12;">
+                    <Label text="Jugadores esperados"
+                           style="-fx-text-fill: #aab8c8; -fx-font-size: 13px; -fx-font-family: 'Monospaced';"/>
+                    <ChoiceBox fx:id="expectedPlayersChoice"
+                               style="-fx-background-color: #1b2532; -fx-border-color: #314f69; -fx-border-radius: 10; -fx-background-radius: 10; -fx-font-family: 'Monospaced';"/>
+                </HBox>
 
-    <HBox fx:id="expectedPlayersBox" spacing="10" alignment="CENTER">
-        <Label text="Jugadores esperados:"
-               style="-fx-text-fill: #aaaacc; -fx-font-size: 13px;"/>
-        <ChoiceBox fx:id="expectedPlayersChoice"
-                   style="-fx-background-color: #16213e; -fx-border-color: #333366;
-                          -fx-border-radius: 4; -fx-background-radius: 4;"/>
-    </HBox>
+                <Button text="ABRIR LOBBY"
+                        fx:id="openLobbyBtn"
+                        onAction="#onAbrirLobby"
+                        style="-fx-background-color: linear-gradient(to bottom, #8fe0ff, #67c8f0); -fx-text-fill: #0d1826; -fx-font-weight: bold; -fx-font-size: 16px; -fx-font-family: 'Monospaced'; -fx-padding: 14 28; -fx-background-radius: 16; -fx-cursor: hand;"
+                        maxWidth="300"/>
 
-    <Button text="ABRIR LOBBY"
-            fx:id="openLobbyBtn"
-            onAction="#onAbrirLobby"
-            style="-fx-background-color: #4cc9f0; -fx-text-fill: #0f1724; -fx-font-weight: bold;
-                   -fx-font-size: 16px; -fx-padding: 14 50; -fx-background-radius: 6; -fx-cursor: hand;"
-            maxWidth="300"/>
-
-    <Label fx:id="errorLabel"
-           style="-fx-text-fill: #e94560; -fx-font-size: 12px;"
-           visible="false"/>
-</VBox>
+                <Label fx:id="errorLabel"
+                       visible="false"
+                       wrapText="true"
+                       style="-fx-text-fill: #ff8899; -fx-font-size: 12px; -fx-font-family: 'Monospaced';"/>
+            </VBox>
+        </HBox>
+    </center>
+</BorderPane>

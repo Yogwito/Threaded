@@ -3,7 +3,7 @@ package com.dino.infrastructure.serialization;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
@@ -12,29 +12,23 @@ import java.util.Map;
  * <p>Convierte mapas a JSON y viceversa usando Jackson. También concentra los
  * tipos de mensaje del protocolo UDP realmente usados por host y clientes para
  * que ambos hablen el mismo lenguaje.</p>
+ *
+ * <p>La estructura del wire format sigue siendo deliberadamente dinámica
+ * ({@code Map<String, Object>}) para no rehacer el protocolo actual. El
+ * contrato tipado vive en {@link MessageType} y en
+ * {@link ProtocolMessageValidator}, mientras esta clase se limita a JSON y a
+ * helpers de armado.</p>
  */
-public class MessageSerializer {
+public class MessageSerializer implements MessageCodec {
     private final ObjectMapper mapper = new ObjectMapper();
-
-    /** Mensaje de entrada al lobby enviado por un cliente nuevo. */
-    public static final String JOIN           = "JOIN";
-    public static final String WELCOME        = "WELCOME";
-    public static final String READY          = "READY";
-    public static final String LOBBY_SNAPSHOT = "LOBBY_SNAPSHOT";
-    public static final String START_GAME     = "START_GAME";
-    public static final String MOVE_TARGET    = "MOVE_TARGET";
-    public static final String JUMP           = "JUMP";
-    public static final String SNAPSHOT       = "SNAPSHOT";
-    public static final String GAME_EVENT     = "GAME_EVENT";
-    public static final String DISCONNECT     = "DISCONNECT";
-    public static final String GAME_OVER      = "GAME_OVER";
 
     /**
      * Serializa un mensaje listo para enviarse por UDP.
      *
      * @param msg mapa con el contenido del datagrama
-     * @return arreglo de bytes JSON; vacío si ocurre un error
+     * @return arreglo de bytes JSON; vacío si ocurre un error de serialización
      */
+    @Override
     public byte[] serialize(Map<String, Object> msg) {
         try {
             return mapper.writeValueAsBytes(msg);
@@ -50,11 +44,12 @@ public class MessageSerializer {
      * @return mapa deserializado o un mapa vacío si el contenido era inválido
      */
     @SuppressWarnings("unchecked")
+    @Override
     public Map<String, Object> deserialize(byte[] data) {
         try {
             return mapper.readValue(data, Map.class);
         } catch (IOException e) {
-            return new HashMap<>();
+            return Map.of();
         }
     }
 
@@ -66,11 +61,22 @@ public class MessageSerializer {
      * @return mapa listo para serializar o enviar
      */
     public Map<String, Object> build(String type, Object... keyValuePairs) {
-        Map<String, Object> msg = new HashMap<>();
+        Map<String, Object> msg = new LinkedHashMap<>();
         msg.put("type", type);
         for (int i = 0; i + 1 < keyValuePairs.length; i += 2) {
             msg.put(String.valueOf(keyValuePairs[i]), keyValuePairs[i + 1]);
         }
         return msg;
+    }
+
+    /**
+     * Construye un mensaje a partir de un tipo formal del protocolo.
+     *
+     * @param type tipo lógico del mensaje
+     * @param keyValuePairs lista alternada clave/valor
+     * @return mapa listo para serializar o enviar
+     */
+    public Map<String, Object> build(MessageType type, Object... keyValuePairs) {
+        return build(type.wireValue(), keyValuePairs);
     }
 }

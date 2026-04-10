@@ -1,45 +1,119 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<?import javafx.scene.control.*?>
-<?import javafx.scene.layout.*?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.canvas.Canvas?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ListView?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Priority?>
+<?import javafx.scene.layout.StackPane?>
+<?import javafx.scene.layout.VBox?>
 
-<VBox xmlns="http://javafx.com/javafx/21"
-      xmlns:fx="http://javafx.com/fxml/1"
-      fx:controller="com.dino.presentation.controllers.LobbyController"
-      alignment="CENTER"
-      spacing="24"
-      style="-fx-background-color: #0f1724; -fx-padding: 60;">
+<BorderPane xmlns="http://javafx.com/javafx/21"
+            xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="com.dino.presentation.controllers.LobbyController"
+            style="-fx-background-color: linear-gradient(to bottom, #0b1220, #111a2b 34%, #141d30 100%);">
+    <top>
+        <VBox spacing="10"
+              style="-fx-background-color: rgba(10,16,26,0.94); -fx-padding: 22 28 18 28; -fx-border-color: rgba(72,94,120,0.82); -fx-border-width: 0 0 2 0;">
+            <HBox spacing="14" alignment="CENTER_LEFT">
+                <Label text="SALA DE ESPERA"
+                       style="-fx-font-size: 34px; -fx-font-weight: bold; -fx-text-fill: #eef4fb; -fx-font-family: 'Monospaced';"/>
+                <Label text="pre-partida"
+                       style="-fx-text-fill: #8ed5ff; -fx-font-size: 12px; -fx-font-family: 'Monospaced'; -fx-background-color: rgba(20,39,59,0.92); -fx-background-radius: 999; -fx-padding: 5 12 5 12;"/>
+            </HBox>
+            <Label text="Conectense, marquen READY y entren juntos a la salida cuando el host inicie la partida."
+                   wrapText="true"
+                   style="-fx-font-size: 13px; -fx-text-fill: #8fc8ff; -fx-font-family: 'Monospaced';"/>
+        </VBox>
+    </top>
 
-    <Label text="SALA DE ESPERA"
-           style="-fx-font-size: 42px; -fx-font-weight: bold; -fx-text-fill: white;"/>
+    <center>
+        <HBox spacing="20" BorderPane.alignment="CENTER" style="-fx-padding: 24 28 24 28;">
+            <VBox spacing="12" prefWidth="540" HBox.hgrow="ALWAYS"
+                  style="-fx-background-color: rgba(16,23,35,0.94); -fx-background-radius: 22; -fx-border-radius: 22; -fx-border-color: #31495f; -fx-border-width: 2; -fx-padding: 18;">
+                <HBox spacing="10" alignment="CENTER_LEFT">
+                    <Label text="Area de pre-partida"
+                           style="-fx-text-fill: #edf3fa; -fx-font-size: 16px; -fx-font-weight: bold; -fx-font-family: 'Monospaced';"/>
+                    <Label text="sin cuerda hasta iniciar"
+                           style="-fx-text-fill: #8be5ff; -fx-font-size: 11px; -fx-font-family: 'Monospaced'; -fx-background-color: rgba(17,42,58,0.9); -fx-background-radius: 999; -fx-padding: 4 10 4 10;"/>
+                </HBox>
+                <Label text="Los jugadores aparecen aqui sin cuerda para confirmar colores, nombres y estado antes de empezar."
+                       wrapText="true"
+                       style="-fx-text-fill: #91a5bd; -fx-font-size: 12px; -fx-font-family: 'Monospaced';"/>
+                <StackPane style="-fx-background-color: linear-gradient(to bottom, #0e151f, #0b1118); -fx-background-radius: 20; -fx-border-radius: 20; -fx-border-color: #2a3d52; -fx-border-width: 1.5; -fx-padding: 10;">
+                    <Canvas fx:id="lobbyPreviewCanvas" width="490" height="266"/>
+                </StackPane>
+            </VBox>
 
-    <Label text="Todos deben entrar juntos a la salida"
-           style="-fx-font-size: 14px; -fx-text-fill: #4cc9f0; -fx-font-style: italic;"/>
+            <VBox spacing="14" prefWidth="344"
+                  style="-fx-background-color: rgba(16,23,35,0.96); -fx-background-radius: 22; -fx-border-radius: 22; -fx-border-color: #31495f; -fx-border-width: 2; -fx-padding: 18;">
+                <Label text="Estado del lobby"
+                       style="-fx-text-fill: #edf3fa; -fx-font-size: 16px; -fx-font-weight: bold; -fx-font-family: 'Monospaced';"/>
+                <HBox spacing="10">
+                    <VBox spacing="6" HBox.hgrow="ALWAYS"
+                          style="-fx-background-color: #121a24; -fx-background-radius: 14; -fx-border-radius: 14; -fx-border-color: rgba(54,75,98,0.9); -fx-border-width: 1.2; -fx-padding: 12;">
+                        <Label text="Conectados"
+                               style="-fx-text-fill: #8fa3bb; -fx-font-size: 11px; -fx-font-family: 'Monospaced';"/>
+                        <Label fx:id="connectedSummaryLabel"
+                               text="Conectados: 0/0"
+                               style="-fx-text-fill: #eef4fb; -fx-font-size: 14px; -fx-font-weight: bold; -fx-font-family: 'Monospaced';"/>
+                    </VBox>
+                    <VBox spacing="6" HBox.hgrow="ALWAYS"
+                          style="-fx-background-color: #121a24; -fx-background-radius: 14; -fx-border-radius: 14; -fx-border-color: rgba(54,75,98,0.9); -fx-border-width: 1.2; -fx-padding: 12;">
+                        <Label text="Listos"
+                               style="-fx-text-fill: #8fa3bb; -fx-font-size: 11px; -fx-font-family: 'Monospaced';"/>
+                        <Label fx:id="readySummaryLabel"
+                               text="Listos: 0/0"
+                               style="-fx-text-fill: #9be4ae; -fx-font-size: 14px; -fx-font-weight: bold; -fx-font-family: 'Monospaced';"/>
+                    </VBox>
+                </HBox>
 
-    <VBox spacing="8" maxWidth="500" style="-fx-padding: 10 0;">
-        <Label text="Jugadores conectados:" style="-fx-text-fill: #aaaacc; -fx-font-size: 13px;"/>
-        <ListView fx:id="playersList"
-                  prefHeight="200"
-                  style="-fx-background-color: #16213e; -fx-border-color: #333366; -fx-border-radius: 6;
-                         -fx-background-radius: 6; -fx-control-inner-background: #16213e;"/>
-    </VBox>
+                <VBox spacing="6"
+                      style="-fx-background-color: #121a24; -fx-background-radius: 14; -fx-border-radius: 14; -fx-border-color: rgba(54,75,98,0.9); -fx-border-width: 1.2; -fx-padding: 12;">
+                    <Label text="Disponibilidad"
+                           style="-fx-text-fill: #8fa3bb; -fx-font-size: 11px; -fx-font-family: 'Monospaced';"/>
+                    <Label fx:id="missingSummaryLabel"
+                           text="Faltan jugadores"
+                           wrapText="true"
+                           style="-fx-text-fill: #ffd49a; -fx-font-size: 14px; -fx-font-weight: bold; -fx-font-family: 'Monospaced';"/>
+                </VBox>
 
-    <HBox spacing="16" alignment="CENTER">
-        <Button text="LISTO"
-                fx:id="readyBtn"
-                onAction="#onListo"
-                style="-fx-background-color: #4cc9f0; -fx-text-fill: #0f1724; -fx-font-weight: bold;
-                       -fx-font-size: 15px; -fx-padding: 12 40; -fx-background-radius: 6; -fx-cursor: hand;"/>
+                <VBox spacing="8" VBox.vgrow="ALWAYS">
+                    <Label text="Jugadores conectados"
+                           style="-fx-text-fill: #edf3fa; -fx-font-size: 14px; -fx-font-weight: bold; -fx-font-family: 'Monospaced';"/>
+                    <Label text="Color, nombre y estado actual de cada peer."
+                           wrapText="true"
+                           style="-fx-text-fill: #8fa3bb; -fx-font-size: 11px; -fx-font-family: 'Monospaced';"/>
+                    <ListView fx:id="playersList"
+                              prefHeight="190"
+                              style="-fx-control-inner-background: #10161f; -fx-background-color: #10161f; -fx-border-color: #293949; -fx-border-radius: 14; -fx-background-radius: 14; -fx-text-fill: #eef4fb; -fx-font-family: 'Monospaced'; -fx-fixed-cell-size: 30;"/>
+                </VBox>
 
-        <Button text="INICIAR PARTIDA"
-                fx:id="startBtn"
-                onAction="#onIniciarPartida"
-                visible="false"
-                style="-fx-background-color: #80ed99; -fx-text-fill: #0f1724; -fx-font-weight: bold;
-                       -fx-font-size: 15px; -fx-padding: 12 40; -fx-background-radius: 6; -fx-cursor: hand;
-                       -fx-border-color: #4cc9f0; -fx-border-radius: 6;"/>
-    </HBox>
+                <HBox spacing="12" alignment="CENTER_LEFT">
+                    <Button text="READY"
+                            fx:id="readyBtn"
+                            onAction="#onListo"
+                            style="-fx-background-color: linear-gradient(to bottom, #8ae2ff, #5fc8f4); -fx-text-fill: #0d1826; -fx-font-weight: bold; -fx-font-size: 14px; -fx-font-family: 'Monospaced'; -fx-padding: 12 26; -fx-background-radius: 14; -fx-cursor: hand;"/>
 
-    <Label fx:id="statusLabel" text=""
-           style="-fx-text-fill: #aaaacc; -fx-font-size: 12px;"/>
-</VBox>
+                    <Button text="INICIAR PARTIDA"
+                            fx:id="startBtn"
+                            onAction="#onIniciarPartida"
+                            visible="false"
+                            style="-fx-background-color: linear-gradient(to bottom, #a7f0b6, #7cdc92); -fx-text-fill: #112015; -fx-font-weight: bold; -fx-font-size: 14px; -fx-font-family: 'Monospaced'; -fx-padding: 12 26; -fx-background-radius: 14; -fx-cursor: hand;"/>
+                </HBox>
+
+                <Label fx:id="statusLabel"
+                       text=""
+                       wrapText="true"
+                       style="-fx-text-fill: #9aacbf; -fx-font-size: 12px; -fx-font-family: 'Monospaced'; -fx-background-color: rgba(12,18,28,0.74); -fx-background-radius: 12; -fx-padding: 8 10 8 10;"/>
+            </VBox>
+        </HBox>
+    </center>
+
+    <padding>
+        <Insets top="0" right="0" bottom="0" left="0"/>
+    </padding>
+</BorderPane>

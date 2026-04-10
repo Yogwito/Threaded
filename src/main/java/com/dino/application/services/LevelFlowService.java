@@ -3,7 +3,7 @@ package com.dino.application.services;
 import com.dino.application.levels.Box;
 import com.dino.application.levels.Coin;
 import com.dino.application.levels.LevelData;
-import com.dino.application.levels.LevelLoader;
+import com.dino.application.levels.LevelCatalog;
 import com.dino.application.levels.Platform;
 import com.dino.config.GameConfig;
 import com.dino.domain.entities.ButtonSwitch;
@@ -26,36 +26,53 @@ import java.util.Map;
  * sala, score y finalización de campaña.</p>
  */
 public final class LevelFlowService {
-    private final SessionService sessionService;
+    private final SessionWorldState worldState;
+    private final SessionMatchState matchState;
     private final EventPublisher eventPublisher;
+    private final LevelCatalog levelCatalog;
 
     private boolean buttonScoreAwarded = false;
     private int nextFinishOrder = 1;
 
-    public LevelFlowService(SessionService sessionService, EventPublisher eventPublisher) {
-        this.sessionService = sessionService;
+    /**
+     * Crea el coordinador de flujo de nivel para la sesión actual.
+     *
+     * @param worldState estado mutable del mundo actual
+     * @param matchState progreso mutable de la campaña
+     * @param eventPublisher publicador de eventos internos
+     * @param levelCatalog fuente desde la que se cargan los niveles
+     */
+    public LevelFlowService(SessionWorldState worldState,
+                            SessionMatchState matchState,
+                            EventPublisher eventPublisher,
+                            LevelCatalog levelCatalog) {
+        this.worldState = worldState;
+        this.matchState = matchState;
         this.eventPublisher = eventPublisher;
+        this.levelCatalog = levelCatalog;
     }
 
+    /**
+     * Reinicia estado transitorio asociado al nivel en curso.
+     */
     public void resetState() {
         buttonScoreAwarded = false;
         nextFinishOrder = 1;
     }
 
+    /**
+     * Carga un nivel completo en el estado de sesión y reubica a los jugadores.
+     *
+     * @param levelIndex índice base 0 del nivel a cargar
+     * @param resetScores indica si los puntajes deben reiniciarse
+     */
     public void loadLevel(int levelIndex, boolean resetScores) {
-        sessionService.setCurrentLevelIndex(levelIndex);
-        sessionService.getPlatforms().clear();
-        sessionService.getSpecialPlatforms().clear();
-        sessionService.getHazards().clear();
-        sessionService.getCheckpoints().clear();
-        sessionService.getSpawnPoints().clear();
-        sessionService.getPushBlocks().clear();
-        sessionService.getCoins().clear();
-        LevelData levelData = LevelLoader.loadLevel(levelIndex + 1);
+        worldState.clearLevel();
+        LevelData levelData = levelCatalog.loadLevel(levelIndex + 1);
         applyLevelData(levelData, levelIndex);
 
         if (resetScores) {
-            for (Player player : sessionService.getPlayers().values()) {
+            for (Player player : worldState.players().values()) {
                 player.setScore(0);
                 player.setDeaths(0);
             }
@@ -64,9 +81,14 @@ public final class LevelFlowService {
         resetRoomState();
     }
 
+    /**
+     * Evalúa si algún jugador está presionando el botón y sincroniza la puerta.
+     *
+     * @param players jugadores conectados a evaluar
+     */
     public void updateButtonAndDoor(List<Player> players) {
-        ButtonSwitch button = sessionService.getButtonSwitch();
-        var door = sessionService.getDoor();
+        ButtonSwitch button = worldState.buttonSwitch();
+        var door = worldState.door();
         if (button == null || door == null) return;
 
         boolean pressed = false;
@@ -94,8 +116,13 @@ public final class LevelFlowService {
         }
     }
 
+    /**
+     * Actualiza qué jugadores están dentro de la salida y asigna puntaje.
+     *
+     * @param players jugadores conectados a evaluar
+     */
     public void updateExitState(List<Player> players) {
-        ExitZone exitZone = sessionService.getExitZone();
+        ExitZone exitZone = worldState.exitZone();
         for (Player player : players) {
             if (!player.isConnected()) continue;
             boolean wasAtExit = player.isAtExit();
@@ -112,8 +139,13 @@ public final class LevelFlowService {
         }
     }
 
+    /**
+     * Procesa colisiones entre jugadores y monedas activas del nivel.
+     *
+     * @param players jugadores conectados y vivos del frame actual
+     */
     public void updateCoins(List<Player> players) {
-        for (CollectibleItem coin : sessionService.getCoins()) {
+        for (CollectibleItem coin : worldState.coins()) {
             if (!coin.isActive()) continue;
             for (Player player : players) {
                 if (!player.isConnected() || !player.isAlive()) continue;
@@ -169,14 +201,15 @@ public final class LevelFlowService {
      *         simular ticks
      */
     public boolean advanceLevelOrFinish() {
-        int nextLevel = sessionService.getCurrentLevelIndex() + 1;
-        if (nextLevel >= sessionService.getTotalLevels()) {
-            sessionService.setGameRunning(false);
+        int nextLevel = matchState.getCurrentLevelIndex() + 1;
+        if (nextLevel >= matchState.getTotalLevels()) {
+            matchState.setGameRunning(false);
+            matchState.setCurrentLevelIndex(nextLevel - 1);
             eventPublisher.publish(EventNames.LEVEL_COMPLETED, Map.of(
-                "elapsedTime", sessionService.getElapsedTime(),
-                "levelIndex", sessionService.getCurrentLevelIndex()
+                "elapsedTime", matchState.getElapsedTime(),
+                "levelIndex", matchState.getCurrentLevelIndex()
             ));
-            eventPublisher.publish(EventNames.GAME_OVER, Map.of("elapsedTime", sessionService.getElapsedTime()));
+            eventPublisher.publish(EventNames.GAME_OVER, Map.of("elapsedTime", matchState.getElapsedTime()));
             return true;
         }
 
@@ -186,42 +219,38 @@ public final class LevelFlowService {
     }
 
     private void resetRoom(String reason) {
-        sessionService.setRoomResetCount(sessionService.getRoomResetCount() + 1);
-        sessionService.setRoomResetReason(reason);
+        matchState.recordRoomReset(reason);
         resetRoomState();
         eventPublisher.publish(EventNames.ROOM_RESET, Map.of("reason", reason));
     }
 
     private void applyLevelData(LevelData levelData, int levelIndex) {
-        sessionService.setCurrentLevelIndex(levelIndex);
-        sessionService.setCurrentLevelName(levelData.getName());
-        sessionService.setCurrentBackground(levelData.getBackground());
-        sessionService.setCurrentTileSize(levelData.getTileSize());
+        matchState.updateLevelPresentation(levelIndex, levelData.getName(), levelData.getBackground(), levelData.getTileSize());
 
         int index = 0;
         for (Platform platform : levelData.getPlatforms()) {
-            sessionService.getPlatforms().add(toPlatformTile("platform_" + index++, platform));
+            worldState.platforms().add(toPlatformTile("platform_" + index++, platform));
         }
 
         int specialIndex = 0;
         for (Platform platform : levelData.getSpecialPlatforms()) {
             PlatformTile tile = toPlatformTile("special_" + specialIndex++, platform);
-            sessionService.getPlatforms().add(tile);
-            sessionService.getSpecialPlatforms().add(new PlatformTile(tile.getId(), tile.getX(), tile.getY(), tile.getWidth(), tile.getHeight()));
+            worldState.platforms().add(tile);
+            worldState.specialPlatforms().add(new PlatformTile(tile.getId(), tile.getX(), tile.getY(), tile.getWidth(), tile.getHeight()));
         }
 
         int hazardIndex = 0;
         for (Platform hazard : levelData.getHazards()) {
-            sessionService.getHazards().add(toPlatformTile("hazard_" + hazardIndex++, hazard));
+            worldState.hazards().add(toPlatformTile("hazard_" + hazardIndex++, hazard));
         }
 
         int checkpointIndex = 0;
         for (Platform checkpoint : levelData.getCheckpoints()) {
-            sessionService.getCheckpoints().add(toPlatformTile("checkpoint_" + checkpointIndex++, checkpoint));
+            worldState.checkpoints().add(toPlatformTile("checkpoint_" + checkpointIndex++, checkpoint));
         }
 
         for (double[] spawn : levelData.getSpawnPoints()) {
-            sessionService.getSpawnPoints().add(new double[]{spawn[0], spawn[1]});
+            worldState.spawnPoints().add(new double[]{spawn[0], spawn[1]});
         }
 
         int boxIndex = 0;
@@ -229,17 +258,17 @@ public final class LevelFlowService {
             PushBlock pushBlock = new PushBlock("box_" + boxIndex++, box.getX(), box.getY(), box.getWidth(), box.getHeight());
             pushBlock.setHomeX(box.getX());
             pushBlock.setHomeY(box.getY());
-            sessionService.getPushBlocks().add(pushBlock);
+            worldState.pushBlocks().add(pushBlock);
         }
 
-        sessionService.setButtonSwitch(null);
-        sessionService.setDoor(null);
-        sessionService.setExitZone(createExitZone(levelData.getGoals()));
+        worldState.setButtonSwitch(null);
+        worldState.setDoor(null);
+        worldState.setExitZone(createExitZone(levelData.getGoals()));
 
         double coinOffset = (levelData.getTileSize() - GameConfig.COIN_SIZE) / 2.0;
         int coinIndex = 0;
         for (Coin coin : levelData.getCoins()) {
-            sessionService.getCoins().add(new CollectibleItem(
+            worldState.coins().add(new CollectibleItem(
                 "coin_" + coinIndex++,
                 coin.getX() + coinOffset,
                 coin.getY() + coinOffset,
@@ -268,7 +297,7 @@ public final class LevelFlowService {
     }
 
     private boolean isTouchingHazard(Player player) {
-        for (PlatformTile hazard : sessionService.getHazards()) {
+        for (PlatformTile hazard : worldState.hazards()) {
             if (GameRules.intersects(player.getX(), player.getY(), player.getWidth(), player.getHeight(),
                 hazard.getX(), hazard.getY(), hazard.getWidth(), hazard.getHeight())) {
                 return true;
@@ -279,8 +308,8 @@ public final class LevelFlowService {
 
     private void resetRoomState() {
         int index = 0;
-        List<double[]> spawns = sessionService.getSpawnPoints();
-        for (Player player : sessionService.getPlayers().values()) {
+        List<double[]> spawns = worldState.spawnPoints();
+        for (Player player : worldState.players().values()) {
             if (!player.isConnected()) continue;
             double[] spawn = spawns.get(Math.min(index, spawns.size() - 1));
             player.setX(spawn[0]);
@@ -296,15 +325,15 @@ public final class LevelFlowService {
             player.setTargetY(spawn[1] + player.getHeight() / 2.0);
             index++;
         }
-        if (sessionService.getButtonSwitch() != null) sessionService.getButtonSwitch().setPressed(false);
-        if (sessionService.getDoor() != null) sessionService.getDoor().setOpen(false);
-        for (PushBlock block : sessionService.getPushBlocks()) {
+        if (worldState.buttonSwitch() != null) worldState.buttonSwitch().setPressed(false);
+        if (worldState.door() != null) worldState.door().setOpen(false);
+        for (PushBlock block : worldState.pushBlocks()) {
             block.setX(block.getHomeX());
             block.setY(block.getHomeY());
             block.setVx(0);
             block.setVy(0);
         }
-        for (CollectibleItem coin : sessionService.getCoins()) coin.setActive(true);
+        for (CollectibleItem coin : worldState.coins()) coin.setActive(true);
         nextFinishOrder = 1;
     }
 

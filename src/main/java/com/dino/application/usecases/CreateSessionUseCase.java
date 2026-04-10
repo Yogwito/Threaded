@@ -1,6 +1,7 @@
 package com.dino.application.usecases;
 
 import com.dino.application.services.EventPublisher;
+import com.dino.application.services.SessionLifecycleService;
 import com.dino.application.services.SessionService;
 import com.dino.domain.entities.Player;
 import com.dino.domain.events.EventNames;
@@ -18,6 +19,7 @@ import java.util.UUID;
  */
 public class CreateSessionUseCase {
     private final SessionService sessionService;
+    private final SessionLifecycleService lifecycleService;
     private final NetworkPeer udpPeer;
     private final EventPublisher eventBus;
 
@@ -28,8 +30,12 @@ public class CreateSessionUseCase {
      * @param udpPeer socket UDP local
      * @param eventBus bus de eventos para notificar la creación del jugador local
      */
-    public CreateSessionUseCase(SessionService sessionService, NetworkPeer udpPeer, EventPublisher eventBus) {
+    public CreateSessionUseCase(SessionService sessionService,
+                                SessionLifecycleService lifecycleService,
+                                NetworkPeer udpPeer,
+                                EventPublisher eventBus) {
         this.sessionService = sessionService;
+        this.lifecycleService = lifecycleService;
         this.udpPeer = udpPeer;
         this.eventBus = eventBus;
     }
@@ -45,14 +51,7 @@ public class CreateSessionUseCase {
      */
     public void execute(String playerName, String localIp, int localPort, int expectedPlayers) throws Exception {
         String playerId = UUID.randomUUID().toString();
-        sessionService.setLocalPlayerId(playerId);
-        sessionService.setLocalIp(localIp);
-        sessionService.setLocalPort(localPort);
-        sessionService.setHostIp(localIp);
-        sessionService.setHostPort(localPort);
-        sessionService.setHost(true);
-        sessionService.setPlayerName(playerName);
-        sessionService.setExpectedPlayers(expectedPlayers);
+        lifecycleService.configureAsHost(playerId, playerName, localIp, localPort, expectedPlayers);
 
         Player host = new Player(playerId, playerName, "pride");
         host.setX(200); host.setY(200);

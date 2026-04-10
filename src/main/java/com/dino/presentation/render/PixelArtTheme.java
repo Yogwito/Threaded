@@ -4,6 +4,11 @@ import javafx.scene.paint.Color;
 
 /**
  * Paletas y estilos base para el render pixel art del juego.
+ *
+ * <p>Concentra colores compartidos de HUD y mundo, así como la resolución de
+ * paletas por biome y skins de jugador. Mantener esta información en un único
+ * punto evita que el renderer disperse constantes visuales por toda la capa de
+ * presentación.</p>
  */
 public final class PixelArtTheme {
     public static final String PRIDE = "pride";
@@ -41,8 +46,15 @@ public final class PixelArtTheme {
         Color.web("#750787")
     };
 
+    /** Clase utilitaria: no debe instanciarse. */
     private PixelArtTheme() {}
 
+    /**
+     * Retorna la paleta de fondo y tiles asociada a un biome.
+     *
+     * @param biomeName nombre lógico del biome o fondo
+     * @return paleta visual correspondiente; por defecto usa la estándar
+     */
     public static Palette paletteFor(String biomeName) {
         if (biomeName == null) return defaultPalette();
         return switch (biomeName.toLowerCase()) {
@@ -106,18 +118,43 @@ public final class PixelArtTheme {
         };
     }
 
+    /**
+     * Retorna un color primario rotado por índice para jugadores sin skin explícita.
+     *
+     * @param index índice del jugador dentro del orden de render
+     * @return color base recomendado
+     */
     public static Color playerPrimary(int index) {
         return PLAYER_PRIMARY[Math.floorMod(index, PLAYER_PRIMARY.length)];
     }
 
+    /**
+     * Retorna un color secundario rotado por índice para jugadores sin skin explícita.
+     *
+     * @param index índice del jugador dentro del orden de render
+     * @return color secundario recomendado
+     */
     public static Color playerSecondary(int index) {
         return PLAYER_SECONDARY[Math.floorMod(index, PLAYER_SECONDARY.length)];
     }
 
+    /**
+     * Indica si una skin textual debe renderizarse con la bandera pride.
+     *
+     * @param colorName nombre lógico de color o skin
+     * @return {@code true} cuando corresponde la skin multicolor
+     */
     public static boolean usesPrideFlag(String colorName) {
         return PRIDE.equalsIgnoreCase(colorName);
     }
 
+    /**
+     * Resuelve el color primario visible de un jugador.
+     *
+     * @param colorName skin textual declarada por la sesión
+     * @param index índice de fallback para rotación de paleta
+     * @return color primario final
+     */
     public static Color resolvePlayerPrimary(String colorName, int index) {
         if (colorName == null) return playerPrimary(index);
         return switch (colorName.toLowerCase()) {
@@ -130,6 +167,13 @@ public final class PixelArtTheme {
         };
     }
 
+    /**
+     * Resuelve el color secundario visible de un jugador.
+     *
+     * @param colorName skin textual declarada por la sesión
+     * @param index índice de fallback para rotación de paleta
+     * @return color secundario final
+     */
     public static Color resolvePlayerSecondary(String colorName, int index) {
         if (colorName == null) return playerSecondary(index);
         return switch (colorName.toLowerCase()) {
@@ -142,6 +186,12 @@ public final class PixelArtTheme {
         };
     }
 
+    /**
+     * Retorna una franja de la bandera pride según índice circular.
+     *
+     * @param index índice de la franja solicitada
+     * @return color de la franja correspondiente
+     */
     public static Color prideStripe(int index) {
         return PRIDE_STRIPES[Math.floorMod(index, PRIDE_STRIPES.length)];
     }
@@ -163,6 +213,22 @@ public final class PixelArtTheme {
         );
     }
 
+    /**
+     * Paleta completa usada por el renderer para un biome concreto.
+     *
+     * @param backgroundFar color del plano de fondo más lejano
+     * @param backgroundMid color del plano intermedio de fondo
+     * @param backgroundNear color del plano cercano de fondo
+     * @param platformTop color del borde superior de plataformas normales
+     * @param platformFace color principal del cuerpo de plataformas normales
+     * @param platformDetail color auxiliar de textura para plataformas
+     * @param crateDark tono oscuro para cajas y bloques
+     * @param crateLight tono claro para cajas y bloques
+     * @param hazard color principal de hazards
+     * @param goal color principal de la meta
+     * @param checkpoint color principal de checkpoints
+     * @param special color principal de plataformas especiales
+     */
     public record Palette(
         Color backgroundFar,
         Color backgroundMid,
