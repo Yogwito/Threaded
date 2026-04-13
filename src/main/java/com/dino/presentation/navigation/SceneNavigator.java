@@ -22,19 +22,19 @@ public final class SceneNavigator {
     }
 
     public void showStartMenu() throws Exception {
-        show("/com.dino.views/start_menu.fxml");
+        show("/com/dino/views/start_menu.fxml");
     }
 
     public void showLobby() throws Exception {
-        show("/com.dino.views/lobby.fxml");
+        show("/com/dino/views/lobby.fxml");
     }
 
     public void showGame() throws Exception {
-        show("/com.dino.views/game.fxml");
+        show("/com/dino/views/game.fxml");
     }
 
     public void showGameOver() throws Exception {
-        show("/com.dino.views/game_over.fxml");
+        show("/com/dino/views/game_over.fxml");
     }
 
     /**

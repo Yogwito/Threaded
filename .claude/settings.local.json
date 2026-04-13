@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mvn javafx:run:*)",
+      "Read(//c/Program Files/Java//**)",
+      "Read(//c/Users/truji/.m2/wrapper/**)"
+    ]
+  }
+}
