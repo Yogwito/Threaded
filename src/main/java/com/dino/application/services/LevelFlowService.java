@@ -218,12 +218,23 @@ public final class LevelFlowService {
         return false;
     }
 
+    /**
+     * Reinicia la sala actual, preservando el nivel pero restaurando su estado.
+     *
+     * @param reason motivo legible del reinicio para HUD y bitácora
+     */
     private void resetRoom(String reason) {
         matchState.recordRoomReset(reason);
         resetRoomState();
         eventPublisher.publish(EventNames.ROOM_RESET, Map.of("reason", reason));
     }
 
+    /**
+     * Proyecta el contenido de un nivel cargado sobre el estado vivo del mundo.
+     *
+     * @param levelData definición parseada del nivel
+     * @param levelIndex índice lógico del nivel dentro de la campaña
+     */
     private void applyLevelData(LevelData levelData, int levelIndex) {
         matchState.updateLevelPresentation(levelIndex, levelData.getName(), levelData.getBackground(), levelData.getTileSize());
 
@@ -277,6 +288,12 @@ public final class LevelFlowService {
         }
     }
 
+    /**
+     * Construye la zona de salida efectiva a partir de uno o varios tiles meta.
+     *
+     * @param goals tiles declarados como meta en el recurso del nivel
+     * @return zona rectangular que engloba toda la salida
+     */
     private ExitZone createExitZone(List<Platform> goals) {
         if (goals.isEmpty()) return new ExitZone(0, 0, GameConfig.EXIT_WIDTH, GameConfig.EXIT_HEIGHT);
         double minX = Double.MAX_VALUE;
@@ -292,10 +309,24 @@ public final class LevelFlowService {
         return new ExitZone(minX, minY, maxX - minX, maxY - minY);
     }
 
+    /**
+     * Convierte una plataforma cargada del recurso a la entidad visible usada
+     * por la simulación.
+     *
+     * @param id identificador estable dentro del nivel actual
+     * @param platform geometría leída del archivo de nivel
+     * @return tile listo para insertarse en el estado del mundo
+     */
     private PlatformTile toPlatformTile(String id, Platform platform) {
         return new PlatformTile(id, platform.getX(), platform.getY(), platform.getWidth(), platform.getHeight());
     }
 
+    /**
+     * Indica si un jugador está tocando cualquier hazard activo del nivel.
+     *
+     * @param player jugador a evaluar
+     * @return {@code true} si su AABB intersecta un hazard
+     */
     private boolean isTouchingHazard(Player player) {
         for (PlatformTile hazard : worldState.hazards()) {
             if (GameRules.intersects(player.getX(), player.getY(), player.getWidth(), player.getHeight(),
@@ -306,6 +337,13 @@ public final class LevelFlowService {
         return false;
     }
 
+    /**
+     * Restaura posiciones, flags y objetos dinámicos al estado base de la sala.
+     *
+     * <p>Se usa tanto al reiniciar por fallo como al cargar un nivel para
+     * garantizar que jugadores, cajas, puerta y monedas vuelvan a un estado
+     * determinista.</p>
+     */
     private void resetRoomState() {
         int index = 0;
         List<double[]> spawns = worldState.spawnPoints();
@@ -337,6 +375,13 @@ public final class LevelFlowService {
         nextFinishOrder = 1;
     }
 
+    /**
+     * Aplica un delta de puntaje y publica el evento asociado si corresponde.
+     *
+     * @param player jugador cuyo puntaje cambia
+     * @param delta variación a sumar al puntaje actual
+     * @param reason motivo textual corto del cambio
+     */
     private void awardScore(Player player, int delta, String reason) {
         if (delta == 0) return;
         player.addScore(delta);
@@ -348,6 +393,12 @@ public final class LevelFlowService {
         ));
     }
 
+    /**
+     * Resuelve la recompensa de puntaje según el orden de llegada a la salida.
+     *
+     * @param order posición de llegada del jugador dentro de la sala
+     * @return puntaje a conceder por esa posición
+     */
     private int scoreForFinishOrder(int order) {
         return switch (order) {
             case 1 -> GameConfig.SCORE_FIRST_EXIT;

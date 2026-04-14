@@ -52,6 +52,11 @@ public class EventLogObserver {
         });
     }
 
+    /**
+     * Inserta una entrada nueva al principio y conserva el tamaño máximo visible.
+     *
+     * @param msg mensaje ya formateado para la HUD
+     */
     private void add(String msg) {
         entries.addFirst(msg);
         while (entries.size() > MAX) entries.removeLast();
@@ -66,6 +71,12 @@ public class EventLogObserver {
         return new ArrayList<>(entries);
     }
 
+    /**
+     * Intenta traducir un identificador de jugador a su nombre visible.
+     *
+     * @param playerId identificador interno del jugador
+     * @return nombre visible, {@code ?} si falta el id, o el id como fallback
+     */
     private String resolvePlayerName(String playerId) {
         if (playerId == null || playerId.isBlank()) {
             return "?";

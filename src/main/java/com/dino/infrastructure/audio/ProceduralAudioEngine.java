@@ -201,12 +201,24 @@ public final class ProceduralAudioEngine {
         return buffer;
     }
 
+    /**
+     * Genera una envolvente con ataque rápido y cola vibrante para choques.
+     *
+     * @param t tiempo normalizado dentro del sample
+     * @return factor de amplitud instantáneo
+     */
     private double bounceEnvelope(double t) {
         if (t < 0.10) return t / 0.10;
         double decay = Math.pow(1.0 - t, 1.35);
         return Math.max(0, decay * (0.92 + Math.sin(t * 14.0) * 0.08));
     }
 
+    /**
+     * Genera una envolvente suave con ataque y liberación cortos para tonos limpios.
+     *
+     * @param t tiempo normalizado dentro del sample
+     * @return factor de amplitud instantáneo
+     */
     private double softEnvelope(double t) {
         double attack = Math.min(1.0, t / 0.08);
         double release = Math.min(1.0, (1.0 - t) / 0.22);

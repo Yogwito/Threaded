@@ -122,6 +122,13 @@ public class GameController implements Initializable, GameScreenFlowAware, Scene
         gameScreenFlow.resetToStartMenu();
     }
 
+    /**
+     * Conecta el canvas principal con los gestos de apuntado y salto.
+     *
+     * <p>La escena traduce coordenadas de pantalla a coordenadas del mundo para
+     * mantener el input consistente con la cámara actual. El click primario
+     * reutiliza el último punto apuntado y además dispara un salto.</p>
+     */
     private void bindCanvasInput() {
         arenaCanvas.setOnMouseMoved(ev -> {
             lastWorldMouseX = canvasToWorldX(ev.getX());
@@ -152,6 +159,11 @@ public class GameController implements Initializable, GameScreenFlowAware, Scene
     private void startGameLoop() {
         stopGameLoop();
         gameLoop = new AnimationTimer() {
+            /**
+             * Ejecuta un frame visual completo: red, simulación, cámara, render y HUD.
+             *
+             * @param now timestamp de JavaFX en nanosegundos
+             */
             @Override
             public void handle(long now) {
                 if (lastNano == 0) {
@@ -185,6 +197,9 @@ public class GameController implements Initializable, GameScreenFlowAware, Scene
         gameLoop.start();
     }
 
+    /**
+     * Detiene el loop visual activo y reinicia su reloj interno.
+     */
     private void stopGameLoop() {
         if (gameLoop != null) {
             gameLoop.stop();
@@ -193,19 +208,40 @@ public class GameController implements Initializable, GameScreenFlowAware, Scene
         lastNano = 0;
     }
 
+    /**
+     * Reenvía al flujo el último objetivo de apuntado en coordenadas de mundo.
+     *
+     * @param worldX coordenada X destino en el mundo
+     * @param worldY coordenada Y destino en el mundo
+     */
     private void sendAim(double worldX, double worldY) {
         gameScreenFlow.sendAim(worldX, worldY);
     }
 
+    /**
+     * Solicita un salto para el jugador local a través del flujo activo.
+     */
     private void sendJump() {
         gameScreenFlow.sendJump();
     }
 
+    /**
+     * Convierte una coordenada X del canvas a una coordenada X del mundo.
+     *
+     * @param canvasX posición horizontal en píxeles del canvas
+     * @return coordenada horizontal equivalente en el mundo visible
+     */
     private double canvasToWorldX(double canvasX) {
         double scaleX = arenaCanvas.getWidth() / getViewportWorldWidth();
         return cameraX + (canvasX / scaleX);
     }
 
+    /**
+     * Convierte una coordenada Y del canvas a una coordenada Y del mundo.
+     *
+     * @param canvasY posición vertical en píxeles del canvas
+     * @return coordenada vertical equivalente en el mundo visible
+     */
     private double canvasToWorldY(double canvasY) {
         double scaleY = arenaCanvas.getHeight() / getViewportWorldHeight();
         return cameraY + (canvasY / scaleY);
@@ -228,6 +264,12 @@ public class GameController implements Initializable, GameScreenFlowAware, Scene
         renderer.render(arenaCanvas, state);
     }
 
+    /**
+     * Aplica el estilo base de valores, listas y feedback de la HUD.
+     *
+     * <p>Centralizar estos estilos en código evita duplicar cadenas CSS en el
+     * FXML para widgets cuyo aspecto depende del estado del gameplay.</p>
+     */
     private void applyHudStyles() {
         String valueStyle = "-fx-text-fill: #eef6ff; -fx-font-family: 'Monospaced'; "
             + "-fx-font-size: 15px; -fx-font-weight: bold;";
@@ -252,6 +294,9 @@ public class GameController implements Initializable, GameScreenFlowAware, Scene
         eventLog.setStyle(listStyle);
     }
 
+    /**
+     * Refresca el cronómetro visible de la HUD durante el loop de render.
+     */
     private void updateTimer() {
         timerLabel.setText(String.format("%.1fs", gameScreenFlow.elapsedTime()));
     }
@@ -314,6 +359,9 @@ public class GameController implements Initializable, GameScreenFlowAware, Scene
 
     /**
      * Muestra un mensaje temporal resaltado para eventos relevantes.
+     *
+     * @param text texto visible en la píldora de feedback
+     * @param colorHex color CSS usado para resaltar el mensaje
      */
     private void showFeedback(String text, String colorHex) {
         feedbackTimer = FEEDBACK_DURATION_SECONDS;
@@ -331,18 +379,40 @@ public class GameController implements Initializable, GameScreenFlowAware, Scene
         feedbackLabel.setTranslateY(0);
     }
 
+    /**
+     * Calcula el ancho del viewport visible en coordenadas de mundo.
+     *
+     * @return ancho lógico visible tras aplicar el zoom actual
+     */
     private double getViewportWorldWidth() {
         return GameConfig.VIEWPORT_W / currentZoom;
     }
 
+    /**
+     * Calcula el alto del viewport visible en coordenadas de mundo.
+     *
+     * @return alto lógico visible tras aplicar el zoom actual
+     */
     private double getViewportWorldHeight() {
         return GameConfig.VIEWPORT_H / currentZoom;
     }
 
+    /**
+     * Restringe la cámara horizontal a los límites del nivel.
+     *
+     * @param x coordenada X candidata para la cámara
+     * @return coordenada horizontal válida dentro del mapa
+     */
     private double clampCameraX(double x) {
         return Math.max(0, Math.min(GameConfig.LEVEL_WIDTH - getViewportWorldWidth(), x));
     }
 
+    /**
+     * Restringe la cámara vertical a los límites del nivel.
+     *
+     * @param y coordenada Y candidata para la cámara
+     * @return coordenada vertical válida dentro del mapa
+     */
     private double clampCameraY(double y) {
         return Math.max(0, Math.min(GameConfig.LEVEL_HEIGHT - getViewportWorldHeight(), y));
     }

@@ -16,6 +16,12 @@ import java.util.concurrent.atomic.AtomicInteger;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+/**
+ * Pruebas del flujo de lobby {@link LobbyScreenFlow}.
+ *
+ * <p>Valida la propagación de eventos relevantes a la UI del lobby y la
+ * navegación hacia gameplay una vez que la señal de inicio fue aceptada.</p>
+ */
 class LobbyScreenFlowTest {
     @Test
     void bindLobbyUpdatesRefreshesOnRelevantEvents() {

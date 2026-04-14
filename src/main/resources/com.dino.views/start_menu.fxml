@@ -18,7 +18,7 @@
             style="-fx-background-color: linear-gradient(to bottom, #09101b, #121b2b 36%, #162132 100%);">
     <center>
         <HBox spacing="28" alignment="CENTER" style="-fx-padding: 40 48;">
-            <VBox spacing="14" prefWidth="420"
+            <VBox spacing="14" prefWidth="450"
                   style="-fx-background-color: rgba(14,21,32,0.95); -fx-background-radius: 28; -fx-border-radius: 28; -fx-border-color: #36506a; -fx-border-width: 2; -fx-padding: 28;">
                 <Label text="THREADED"
                        style="-fx-font-size: 52px; -fx-font-weight: bold; -fx-text-fill: #eef4fb; -fx-font-family: 'Monospaced';"/>
@@ -30,18 +30,60 @@
                 <Label text="UDP local | host autoritativo | campana cooperativa"
                        style="-fx-font-size: 12px; -fx-text-fill: #8fe4ff; -fx-font-family: 'Monospaced'; -fx-background-color: rgba(17,41,63,0.9); -fx-background-radius: 999; -fx-padding: 6 12 6 12;"/>
 
-                <VBox spacing="10" style="-fx-background-color: #121924; -fx-background-radius: 20; -fx-border-radius: 20; -fx-border-color: rgba(57,79,104,0.9); -fx-border-width: 1.2; -fx-padding: 16;">
-                    <Label text="Como se juega"
+                <VBox spacing="12" prefWidth="394"
+                      style="-fx-background-color: #121924; -fx-background-radius: 20; -fx-border-radius: 20; -fx-border-color: rgba(57,79,104,0.9); -fx-border-width: 1.2; -fx-padding: 18 20;">
+                    <Label text="Cómo se juega"
                            style="-fx-text-fill: #eef4fb; -fx-font-size: 15px; -fx-font-weight: bold; -fx-font-family: 'Monospaced';"/>
-                    <Label text="1. Crea o unete a una sala por UDP local."
-                           wrapText="true"
-                           style="-fx-text-fill: #8fa1b6; -fx-font-size: 12px; -fx-font-family: 'Monospaced';"/>
-                    <Label text="2. Usa el mouse para mover y click izquierdo para saltar."
-                           wrapText="true"
-                           style="-fx-text-fill: #8fa1b6; -fx-font-size: 12px; -fx-font-family: 'Monospaced';"/>
-                    <Label text="3. Recoge monedas, evita hazards y llega con todos a la salida."
-                           wrapText="true"
-                           style="-fx-text-fill: #8fa1b6; -fx-font-size: 12px; -fx-font-family: 'Monospaced';"/>
+                    <HBox spacing="10" alignment="TOP_LEFT">
+                        <Label text="1."
+                               minWidth="18"
+                               style="-fx-text-fill: #8fe4ff; -fx-font-size: 12px; -fx-font-weight: bold; -fx-font-family: 'Monospaced';"/>
+                        <Label text="Avancen juntos: todos los jugadores están unidos por un hilo virtual que limita qué tan lejos pueden separarse."
+                               wrapText="true"
+                               prefWidth="326"
+                               maxWidth="326"
+                               style="-fx-text-fill: #8fa1b6; -fx-font-size: 11.5px; -fx-font-family: 'Monospaced'; -fx-line-spacing: 2px;"/>
+                    </HBox>
+                    <HBox spacing="10" alignment="TOP_LEFT">
+                        <Label text="2."
+                               minWidth="18"
+                               style="-fx-text-fill: #8fe4ff; -fx-font-size: 12px; -fx-font-weight: bold; -fx-font-family: 'Monospaced';"/>
+                        <Label text="Coordinen el movimiento: si el hilo se tensa demasiado, arrastrará o frenará a los jugadores hasta volver a acercarlos."
+                               wrapText="true"
+                               prefWidth="326"
+                               maxWidth="326"
+                               style="-fx-text-fill: #8fa1b6; -fx-font-size: 11.5px; -fx-font-family: 'Monospaced'; -fx-line-spacing: 2px;"/>
+                    </HBox>
+                    <HBox spacing="10" alignment="TOP_LEFT">
+                        <Label text="3."
+                               minWidth="18"
+                               style="-fx-text-fill: #8fe4ff; -fx-font-size: 12px; -fx-font-weight: bold; -fx-font-family: 'Monospaced';"/>
+                        <Label text="Cuidado con el peligro: si cualquier jugador cae al vacío o toca un hazard, toda la sala se reinicia."
+                               wrapText="true"
+                               prefWidth="326"
+                               maxWidth="326"
+                               style="-fx-text-fill: #8fa1b6; -fx-font-size: 11.5px; -fx-font-family: 'Monospaced'; -fx-line-spacing: 2px;"/>
+                    </HBox>
+                    <HBox spacing="10" alignment="TOP_LEFT">
+                        <Label text="4."
+                               minWidth="18"
+                               style="-fx-text-fill: #8fe4ff; -fx-font-size: 12px; -fx-font-weight: bold; -fx-font-family: 'Monospaced';"/>
+                        <Label text="Todos deben escapar: el nivel solo termina cuando todos los jugadores conectados llegan a la salida."
+                               wrapText="true"
+                               prefWidth="326"
+                               maxWidth="326"
+                               style="-fx-text-fill: #8fa1b6; -fx-font-size: 11.5px; -fx-font-family: 'Monospaced'; -fx-line-spacing: 2px;"/>
+                    </HBox>
+                    <HBox spacing="10" alignment="TOP_LEFT">
+                        <Label text="5."
+                               minWidth="18"
+                               style="-fx-text-fill: #8fe4ff; -fx-font-size: 12px; -fx-font-weight: bold; -fx-font-family: 'Monospaced';"/>
+                        <Label text="Usen el entorno a su favor: pueden empujar cajas y hasta subirse encima de otro jugador para alcanzar zonas altas."
+                               wrapText="true"
+                               prefWidth="326"
+                               maxWidth="326"
+                               style="-fx-text-fill: #8fa1b6; -fx-font-size: 11.5px; -fx-font-family: 'Monospaced'; -fx-line-spacing: 2px;"/>
+                    </HBox>
                 </VBox>
             </VBox>
 

@@ -15,6 +15,13 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+/**
+ * Pruebas de round-trip y orden para snapshots autoritativos de sesión.
+ *
+ * <p>Valida que {@link SessionService} preserve el estado principal al
+ * serializar y reaplicar snapshots, y que ignore mensajes antiguos cuando ya
+ * recibió una secuencia más nueva.</p>
+ */
 class SessionSnapshotServiceTest {
     @Test
     void snapshotRoundTripPreservesCoreState() {

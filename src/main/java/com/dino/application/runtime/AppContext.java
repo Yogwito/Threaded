@@ -58,6 +58,12 @@ public final class AppContext {
     private NetworkPeer networkPeer;
     private HostMatchService hostMatchService;
 
+    /**
+     * Construye internamente un runtime completamente compuesto para una ventana.
+     *
+     * @param stage escenario principal de JavaFX
+     * @param resetToStartMenuAction callback para reconstruir el runtime desde menú
+     */
     private AppContext(Stage stage, Runnable resetToStartMenuAction) {
         this.eventBus = new EventBus();
         this.sessionService = new SessionService(eventBus);
@@ -234,6 +240,13 @@ public final class AppContext {
         }
     }
 
+    /**
+     * Intenta notificar al host remoto que el cliente local abandona la sesión.
+     *
+     * <p>Solo se envía en modo cliente y únicamente cuando existe un peer de
+     * red activo. Los errores se ignoran porque este aviso es de cortesía y no
+     * debe bloquear el cierre del runtime.</p>
+     */
     private void sendDisconnectIfNeeded() {
         if (networkPeer == null || !networkPeer.isBound()) return;
         if (sessionService.isHost()) return;
@@ -251,6 +264,12 @@ public final class AppContext {
         }
     }
 
+    /**
+     * Verifica que el runtime ya disponga de un transporte de red activo.
+     *
+     * <p>Se usa como guard clause antes de construir coordinadores o casos de
+     * uso que dependen explícitamente del peer compartido.</p>
+     */
     private void ensureNetworkPeer() {
         if (networkPeer == null) {
             throw new IllegalStateException("No hay un transporte de red activo en el runtime actual");

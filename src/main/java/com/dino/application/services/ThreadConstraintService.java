@@ -184,14 +184,37 @@ public final class ThreadConstraintService {
         }
     }
 
+    /**
+     * Estima cuánta corrección del hilo puede absorber un jugador.
+     *
+     * @param player jugador evaluado
+     * @return factor relativo de movilidad para repartir impulsos
+     */
     private double threadMobility(Player player) {
         return player.isGrounded() ? 0.35 : 0.65;
     }
 
+    /**
+     * Ajusta cuánto del impulso vertical del hilo recibe un jugador.
+     *
+     * @param player jugador evaluado
+     * @return factor vertical según si está en suelo o aire
+     */
     private double threadVerticalFactor(Player player) {
         return player.isGrounded() ? GameConfig.THREAD_GROUNDED_VERTICAL_FACTOR : GameConfig.THREAD_AIR_VERTICAL_FACTOR;
     }
 
+    /**
+     * Aplica un impulso de velocidad opuesto a dos vecinos tensados por el hilo.
+     *
+     * @param a jugador del extremo A
+     * @param b jugador del extremo B
+     * @param nx componente X normalizada entre ambos
+     * @param ny componente Y normalizada entre ambos
+     * @param impulse magnitud total del impulso a repartir
+     * @param aShare proporción asignada al jugador A
+     * @param bShare proporción asignada al jugador B
+     */
     private void applyThreadVelocityImpulse(Player a, Player b, double nx, double ny,
                                             double impulse, double aShare, double bShare) {
         double aImpulse = impulse * aShare;
@@ -203,6 +226,12 @@ public final class ThreadConstraintService {
         b.setVy(b.getVy() - ny * bImpulse * threadVerticalFactor(b));
     }
 
+    /**
+     * Intenta corregir la separación de dos jugadores moviéndolos en posición.
+     *
+     * <p>La corrección pasa por {@link ThreadCollisionHelper} para no atravesar
+     * geometría sólida mientras el hilo reacomoda a ambos extremos.</p>
+     */
     private void applyThreadPositionCorrection(Player a, Player b, double nx, double ny,
                                                double correction, double aShare, double bShare) {
         ThreadCollisionHelper.applyValidatedDelta(

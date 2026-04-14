@@ -140,6 +140,9 @@ public class LobbyController implements Initializable, LobbyScreenFlowAware, Sce
     private void startNetworkLoop() {
         networkTimer = new Timer(true);
         networkTimer.scheduleAtFixedRate(new TimerTask() {
+            /**
+             * Ejecuta un tick de red del lobby y despacha la señal resultante.
+             */
             @Override
             public void run() {
                 LobbySignal signal = lobbyScreenFlow.pollNetworkTick();
@@ -169,8 +172,16 @@ public class LobbyController implements Initializable, LobbyScreenFlowAware, Sce
         }
     }
 
+    /**
+     * Arranca la animación del preview del lobby con un reloj JavaFX ligero.
+     */
     private void startPreviewLoop() {
         previewLoop = new AnimationTimer() {
+            /**
+             * Redibuja el preview con el tiempo continuo del reloj de JavaFX.
+             *
+             * @param now timestamp actual en nanosegundos
+             */
             @Override
             public void handle(long now) {
                 renderLobbyPreview(now / 1_000_000_000.0);
@@ -179,6 +190,11 @@ public class LobbyController implements Initializable, LobbyScreenFlowAware, Sce
         previewLoop.start();
     }
 
+    /**
+     * Redibuja el canvas de preview del lobby con el estado actual.
+     *
+     * @param timeSeconds tiempo continuo usado para animaciones suaves del preview
+     */
     private void renderLobbyPreview(double timeSeconds) {
         previewRenderer.render(
             lobbyPreviewCanvas,
@@ -188,6 +204,9 @@ public class LobbyController implements Initializable, LobbyScreenFlowAware, Sce
         );
     }
 
+    /**
+     * Actualiza los contadores de conectados, listos y faltantes del lobby.
+     */
     private void updateSummaryLabels() {
         int expectedPlayers = lobbyScreenFlow.expectedPlayers();
         int connectedPlayers = lobbyScreenFlow.connectedPlayersCount();

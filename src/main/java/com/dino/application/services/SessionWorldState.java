@@ -62,58 +62,106 @@ final class SessionWorldState {
         exitZone = null;
     }
 
+    /**
+     * Retorna el mapa mutable de jugadores indexados por id.
+     */
     Map<String, Player> players() {
         return players;
     }
 
+    /**
+     * Retorna la lista mutable de plataformas sólidas normales.
+     */
     List<PlatformTile> platforms() {
         return platforms;
     }
 
+    /**
+     * Retorna la lista mutable de plataformas especiales del nivel.
+     */
     List<PlatformTile> specialPlatforms() {
         return specialPlatforms;
     }
 
+    /**
+     * Retorna la lista mutable de hazards del nivel.
+     */
     List<PlatformTile> hazards() {
         return hazards;
     }
 
+    /**
+     * Retorna la lista mutable de checkpoints del nivel.
+     */
     List<PlatformTile> checkpoints() {
         return checkpoints;
     }
 
+    /**
+     * Retorna los puntos de spawn disponibles para la sala actual.
+     */
     List<double[]> spawnPoints() {
         return spawnPoints;
     }
 
+    /**
+     * Retorna el botón de nivel actual, si existe.
+     */
     ButtonSwitch buttonSwitch() {
         return buttonSwitch;
     }
 
+    /**
+     * Actualiza el botón interactivo del nivel.
+     *
+     * @param buttonSwitch nuevo botón o {@code null}
+     */
     void setButtonSwitch(ButtonSwitch buttonSwitch) {
         this.buttonSwitch = buttonSwitch;
     }
 
+    /**
+     * Retorna la puerta asociada al botón del nivel, si existe.
+     */
     Door door() {
         return door;
     }
 
+    /**
+     * Actualiza la puerta interactiva del nivel.
+     *
+     * @param door nueva puerta o {@code null}
+     */
     void setDoor(Door door) {
         this.door = door;
     }
 
+    /**
+     * Retorna la zona de salida activa del nivel.
+     */
     ExitZone exitZone() {
         return exitZone;
     }
 
+    /**
+     * Actualiza la zona de salida del nivel.
+     *
+     * @param exitZone nueva meta o {@code null}
+     */
     void setExitZone(ExitZone exitZone) {
         this.exitZone = exitZone;
     }
 
+    /**
+     * Retorna la lista mutable de bloques empujables del nivel.
+     */
     List<PushBlock> pushBlocks() {
         return pushBlocks;
     }
 
+    /**
+     * Retorna la lista mutable de monedas o coleccionables activos.
+     */
     List<CollectibleItem> coins() {
         return coins;
     }

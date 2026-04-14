@@ -74,15 +74,36 @@ public final class ProtocolMessageValidator {
         };
     }
 
+    /**
+     * Verifica que una clave exista y contenga una cadena no vacía.
+     *
+     * @param message payload recibido
+     * @param key campo a revisar
+     * @return {@code true} si el campo es un {@link String} con contenido útil
+     */
     private boolean hasNonBlankString(Map<String, Object> message, String key) {
         Object value = message.get(key);
         return value instanceof String text && !text.isBlank();
     }
 
+    /**
+     * Verifica que una clave exista y contenga un número.
+     *
+     * @param message payload recibido
+     * @param key campo a revisar
+     * @return {@code true} si el valor implementa {@link Number}
+     */
     private boolean hasNumber(Map<String, Object> message, String key) {
         return message.get(key) instanceof Number;
     }
 
+    /**
+     * Verifica que una clave exista y contenga una colección iterable.
+     *
+     * @param message payload recibido
+     * @param key campo a revisar
+     * @return {@code true} si el valor es iterable
+     */
     private boolean hasList(Map<String, Object> message, String key) {
         return message.get(key) instanceof Iterable<?>;
     }

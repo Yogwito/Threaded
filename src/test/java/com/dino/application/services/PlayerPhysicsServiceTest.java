@@ -8,6 +8,13 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+/**
+ * Pruebas focalizadas para {@link PlayerPhysicsService}.
+ *
+ * <p>Documenta regresiones de sincronización entre input, respawn y estado
+ * físico del jugador para evitar que objetivos antiguos sigan afectando el
+ * movimiento después de reaparecer.</p>
+ */
 class PlayerPhysicsServiceTest {
     @Test
     void syncInputsToPlayersClearsStaleAimAfterRespawn() {

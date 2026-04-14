@@ -179,6 +179,13 @@ public final class LobbySessionCoordinator {
         networkPeer.broadcast(snapshot, sessionService.getRemotePeerAddresses());
     }
 
+    /**
+     * Procesa mensajes aceptados por el host mientras la sesión sigue en lobby.
+     *
+     * @param type tipo validado del mensaje
+     * @param msg payload recibido
+     * @param sender peer remoto que originó el mensaje
+     */
     private void handleHostMessage(MessageType type, Map<String, Object> msg, InetSocketAddress sender) {
         if (type == MessageType.JOIN) {
             String playerId = (String) msg.get("playerId");
@@ -213,12 +220,23 @@ public final class LobbySessionCoordinator {
         }
     }
 
+    /**
+     * Selecciona el siguiente color visible para un jugador recién unido.
+     *
+     * @return nombre lógico de color rotado según cantidad actual de jugadores
+     */
     private String nextPlayerColor() {
         String[] colors = {"red", "blue", "green", "yellow"};
         int index = Math.max(0, sessionService.getPlayerCount()) % colors.length;
         return colors[index];
     }
 
+    /**
+     * Construye un snapshot de lobby etiquetado con el tipo de mensaje deseado.
+     *
+     * @param type tipo lógico del mensaje a emitir
+     * @return snapshot autoritativo listo para enviarse
+     */
     private Map<String, Object> buildTypedSnapshot(MessageType type) {
         Map<String, Object> snapshot = sessionService.buildAuthoritativeSnapshot();
         snapshot.put("type", type.wireValue());

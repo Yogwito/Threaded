@@ -7,6 +7,12 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+/**
+ * Pruebas de presentación para {@link GameOverSummaryFactory}.
+ *
+ * <p>Asegura que el resumen final entregue ranking y textos listos para la
+ * pantalla de cierre sin obligar al controlador a recalcular resultados.</p>
+ */
 class GameOverSummaryFactoryTest {
     @Test
     void buildSortsPlayersAndBuildsWinnerText() {

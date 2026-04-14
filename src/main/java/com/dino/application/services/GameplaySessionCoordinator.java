@@ -173,6 +173,13 @@ public final class GameplaySessionCoordinator {
             GameConfig.CRITICAL_BROADCAST_REPEATS, GameConfig.CRITICAL_BROADCAST_DELAY_MS);
     }
 
+    /**
+     * Valida y procesa un mensaje de gameplay recibido por red.
+     *
+     * @param msg payload ya deserializado
+     * @param sender peer remoto que lo envió
+     * @return señal visible para la capa de presentación
+     */
     private GameplaySignal handleIncomingMessage(Map<String, Object> msg, InetSocketAddress sender) {
         var resolvedType = validator.resolveType(msg);
         if (resolvedType.isEmpty()) return GameplaySignal.NONE;
@@ -197,6 +204,13 @@ public final class GameplaySessionCoordinator {
         return GameplaySignal.NONE;
     }
 
+    /**
+     * Procesa los mensajes que un host acepta durante gameplay.
+     *
+     * @param type tipo validado del mensaje
+     * @param msg payload recibido
+     * @param sender peer remoto que origina el mensaje
+     */
     private void handleHostNetworkMessage(MessageType type, Map<String, Object> msg, InetSocketAddress sender) {
         if (hostMatchService == null) return;
 
@@ -228,6 +242,9 @@ public final class GameplaySessionCoordinator {
         }
     }
 
+    /**
+     * Resuelve y cachea la IP del host remoto para los clientes.
+     */
     private void resolveHostAddress() {
         try {
             hostAddress = InetAddress.getByName(sessionService.getHostIp());
@@ -237,6 +254,12 @@ public final class GameplaySessionCoordinator {
         }
     }
 
+    /**
+     * Publica un snapshot vivo desde el host y lo reaplica localmente.
+     *
+     * <p>El host también consume su propio snapshot para mantener alineadas las
+     * proyecciones dependientes de la misma ruta de datos usada por clientes.</p>
+     */
     private void broadcastLiveSnapshot() {
         Map<String, Object> snapshot = sessionService.buildAuthoritativeSnapshot();
         snapshot.put("type", MessageType.SNAPSHOT.wireValue());

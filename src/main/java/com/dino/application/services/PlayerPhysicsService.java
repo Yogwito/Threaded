@@ -161,6 +161,15 @@ public final class PlayerPhysicsService {
         resolveVerticalCollisions(player);
     }
 
+    /**
+     * Ejecuta la integración física completa de un jugador para un frame.
+     *
+     * <p>Sincroniza input buffered, movimiento horizontal, gravedad,
+     * colisiones, límites del mapa y validación final contra el hilo.</p>
+     *
+     * @param player jugador a integrar
+     * @param dt delta time del frame en segundos
+     */
     private void updatePlayer(Player player, double dt) {
         InputState input = playerInputs.computeIfAbsent(player.getId(), ignored -> new InputState());
         double previousX = player.getX();
@@ -234,6 +243,11 @@ public final class PlayerPhysicsService {
         }
     }
 
+    /**
+     * Resuelve colisiones laterales del jugador contra tiles, puerta y cajas.
+     *
+     * @param player jugador a corregir
+     */
     private void resolveHorizontalCollisions(Player player) {
         for (PlatformTile platform : worldState.platforms()) {
             if (!GameRules.intersects(player, platform)) continue;
@@ -271,6 +285,11 @@ public final class PlayerPhysicsService {
         }
     }
 
+    /**
+     * Resuelve colisiones verticales y recalcula el estado de grounded.
+     *
+     * @param player jugador a corregir
+     */
     private void resolveVerticalCollisions(Player player) {
         player.setGrounded(false);
         for (PlatformTile platform : worldState.platforms()) {
@@ -312,6 +331,11 @@ public final class PlayerPhysicsService {
         }
     }
 
+    /**
+     * Limita al jugador dentro de los bordes válidos del mapa.
+     *
+     * @param player jugador a mantener dentro del nivel
+     */
     private void clampPlayer(Player player) {
         player.setX(Math.max(0, Math.min(GameConfig.LEVEL_WIDTH - player.getWidth(), player.getX())));
         if (player.getY() < 0) {
@@ -320,6 +344,12 @@ public final class PlayerPhysicsService {
         }
     }
 
+    /**
+     * Emite feedback de empuje de caja con un cooldown para no saturar eventos.
+     *
+     * @param player jugador que causó el empuje
+     * @param block caja afectada
+     */
     private void publishPushBlockFeedback(Player player, PushBlock block) {
         if (pushBlockSoundCooldownRemaining > 0 || Math.abs(block.getVx()) < 18) {
             return;
@@ -332,6 +362,12 @@ public final class PlayerPhysicsService {
         ));
     }
 
+    /**
+     * Estado interno de input buffered para un jugador concreto.
+     *
+     * <p>Permite desacoplar los mensajes de input recibidos del momento exacto
+     * en que la física los consume dentro del tick autoritativo.</p>
+     */
     private static final class InputState {
         double targetX;
         double targetY;

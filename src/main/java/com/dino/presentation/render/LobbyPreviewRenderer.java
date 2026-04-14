@@ -87,6 +87,18 @@ public final class LobbyPreviewRenderer {
         }
     }
 
+    /**
+     * Dibuja una tarjeta individual del preview del lobby.
+     *
+     * @param gc contexto de dibujo
+     * @param player jugador asignado al slot o {@code null} si está vacío
+     * @param index índice del slot dentro del preview
+     * @param x origen horizontal de la tarjeta
+     * @param y origen vertical de la tarjeta
+     * @param width ancho de la tarjeta
+     * @param height alto de la tarjeta
+     * @param timeSeconds tiempo continuo para la animación leve del avatar
+     */
     private void drawSlot(GraphicsContext gc, Player player, int index, double x, double y,
                           double width, double height, double timeSeconds) {
         boolean occupied = player != null;

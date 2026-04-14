@@ -72,6 +72,15 @@ public final class StartMenuFlow {
             joinSessionUseCaseFactory.get().execute(playerName, localIp, localPort, hostIp, hostPort));
     }
 
+    /**
+     * Abre el peer de red, ejecuta el caso de uso solicitado y navega al lobby.
+     *
+     * <p>Si cualquier paso falla, cierra la red recién preparada para no dejar
+     * sockets o estado parcial vivos antes de propagar la excepción.</p>
+     *
+     * @param action operación de crear o unirse a una sesión
+     * @throws Exception si falla el bind, la ejecución del caso de uso o la navegación
+     */
     private void executeAndOpenLobby(ThrowingAction action) throws Exception {
         networkPeerOpener.get();
         try {
@@ -83,8 +92,16 @@ public final class StartMenuFlow {
         }
     }
 
+    /**
+     * Acción checked usada para unificar el flujo de crear o unirse a lobby.
+     */
     @FunctionalInterface
     private interface ThrowingAction {
+        /**
+         * Ejecuta la operación encapsulada.
+         *
+         * @throws Exception si la operación falla
+         */
         void run() throws Exception;
     }
 }

@@ -236,6 +236,12 @@ public final class GameScreenFlow {
         }
     }
 
+    /**
+     * Garantiza que el flujo ya fue activado antes de delegar al coordinador.
+     *
+     * @return coordinador de gameplay listo para usarse
+     * @throws IllegalStateException si la escena no llamó antes a {@link #activate()}
+     */
     private GameplaySessionCoordinator requireCoordinator() {
         if (coordinator == null) {
             throw new IllegalStateException("El flujo de gameplay aún no fue activado");

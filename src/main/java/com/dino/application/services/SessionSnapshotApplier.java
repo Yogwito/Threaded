@@ -186,6 +186,12 @@ final class SessionSnapshotApplier {
         }
     }
 
+    /**
+     * Reconstruye un {@link PlatformTile} desde su mapa serializado.
+     *
+     * @param raw datos crudos leídos del snapshot
+     * @return tile mutable listo para el estado de sesión
+     */
     private PlatformTile readPlatformTile(Map<String, Object> raw) {
         PlatformTile tile = new PlatformTile();
         tile.setId((String) raw.get("id"));

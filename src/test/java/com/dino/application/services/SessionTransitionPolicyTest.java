@@ -7,6 +7,12 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+/**
+ * Pruebas de la política de transiciones {@link SessionTransitionPolicy}.
+ *
+ * <p>Documenta el grafo permitido de fases y la calidad de los errores cuando
+ * una transición intenta saltarse el flujo esperado.</p>
+ */
 class SessionTransitionPolicyTest {
     private final SessionTransitionPolicy policy = new SessionTransitionPolicy();
 

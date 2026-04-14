@@ -145,6 +145,12 @@ final class SessionSnapshotBuilder {
         return snapshot;
     }
 
+    /**
+     * Serializa tiles rectangulares simples al formato del snapshot.
+     *
+     * @param tiles colección de tiles a proyectar
+     * @return lista de mapas lista para serialización JSON
+     */
     private List<Map<String, Object>> writePlatformTiles(List<PlatformTile> tiles) {
         List<Map<String, Object>> result = new ArrayList<>();
         for (PlatformTile tile : tiles) {

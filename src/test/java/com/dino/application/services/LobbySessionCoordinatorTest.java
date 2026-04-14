@@ -14,6 +14,12 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+/**
+ * Pruebas unitarias para {@link LobbySessionCoordinator}.
+ *
+ * <p>Cubre validación de mensajes de lobby, prevención de duplicados y la
+ * transición controlada hacia gameplay cuando llega la señal correcta.</p>
+ */
 class LobbySessionCoordinatorTest {
     @Test
     void hostIgnoresMalformedJoinMessages() {

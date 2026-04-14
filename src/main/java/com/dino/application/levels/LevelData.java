@@ -85,6 +85,12 @@ public class LevelData {
     /** @return monedas coleccionables del nivel */
     public List<Coin> getCoins() { return coins; }
 
+    /**
+     * Duplica una lista de puntos 2D para evitar aliasing externo.
+     *
+     * @param points puntos origen del nivel
+     * @return copia defensiva con coordenadas independientes
+     */
     private static List<double[]> copyPoints(List<double[]> points) {
         List<double[]> copy = new ArrayList<>();
         for (double[] point : points) {

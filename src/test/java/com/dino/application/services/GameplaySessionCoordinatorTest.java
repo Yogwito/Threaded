@@ -12,6 +12,13 @@ import java.net.InetSocketAddress;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+/**
+ * Pruebas unitarias para {@link GameplaySessionCoordinator}.
+ *
+ * <p>Verifica transiciones críticas del coordinador durante gameplay, tanto
+ * del lado cliente al recibir mensajes terminales como del lado host al
+ * mantener la cadencia de snapshots y el broadcast de cierre.</p>
+ */
 class GameplaySessionCoordinatorTest {
     @Test
     void clientTransitionsToGameOverWhenMessageArrives() {
@@ -90,11 +97,22 @@ class GameplaySessionCoordinatorTest {
             lifecycle,
             events,
             new LevelCatalog() {
+                /**
+                 * Devuelve un nivel nulo porque esta prueba no ejerce carga real de campaña.
+                 *
+                 * @param levelNumber nivel solicitado por el host
+                 * @return {@code null} en este doble mínimo
+                 */
                 @Override
                 public com.dino.application.levels.LevelData loadLevel(int levelNumber) {
                     return null;
                 }
 
+                /**
+                 * Reporta una campaña de un solo nivel para simplificar la prueba.
+                 *
+                 * @return siempre {@code 1}
+                 */
                 @Override
                 public int countAvailableLevels() {
                     return 1;

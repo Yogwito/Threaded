@@ -6,6 +6,13 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+/**
+ * Pruebas del flujo de vida expuesto por {@link SessionLifecycleService}.
+ *
+ * <p>Confirma que la sesión se reconfigure limpiamente al arrancar como host o
+ * cliente y que las transiciones a game over dejen la partida en estado
+ * detenido.</p>
+ */
 class SessionLifecycleServiceTest {
     @Test
     void hostConfigurationClearsPreviousStateAndEntersLobby() {

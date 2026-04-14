@@ -6,6 +6,12 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+/**
+ * Pruebas del autómata de fases {@link SessionStateMachine}.
+ *
+ * <p>Comprueban tanto el recorrido nominal de la sesión como la protección
+ * ante transiciones inválidas entre fases.</p>
+ */
 class SessionStateMachineTest {
     @Test
     void followsNominalSessionLifecycle() {

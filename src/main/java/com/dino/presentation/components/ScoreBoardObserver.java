@@ -27,6 +27,11 @@ public class ScoreBoardObserver {
         eventBus.subscribe(EventNames.GAME_OVER,         this::onSnapshot);
     }
 
+    /**
+     * Reconstruye el ranking a partir del payload serializado recibido por eventos.
+     *
+     * @param payload snapshot autoritativo o resumen final con la clave {@code players}
+     */
     @SuppressWarnings("unchecked")
     private void onSnapshot(Map<String, Object> payload) {
         List<Map<String, Object>> playerData = (List<Map<String, Object>>) payload.get("players");

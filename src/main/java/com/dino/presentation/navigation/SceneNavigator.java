@@ -112,12 +112,22 @@ public final class SceneNavigator implements SceneNavigation {
         notifySceneShown(currentController);
     }
 
+    /**
+     * Notifica al controlador recién montado que su escena ya quedó visible.
+     *
+     * @param controller controlador activo de la escena actual
+     */
     private void notifySceneShown(Object controller) {
         if (controller instanceof SceneLifecycleAware aware) {
             aware.onSceneShown();
         }
     }
 
+    /**
+     * Notifica al controlador saliente que su escena dejará de estar visible.
+     *
+     * @param controller controlador de la escena que se está descartando
+     */
     private void notifySceneHidden(Object controller) {
         if (controller instanceof SceneLifecycleAware aware) {
             aware.onSceneHidden();

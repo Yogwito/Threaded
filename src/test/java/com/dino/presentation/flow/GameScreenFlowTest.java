@@ -19,6 +19,12 @@ import java.util.concurrent.atomic.AtomicReference;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
+/**
+ * Pruebas del adaptador de gameplay {@link GameScreenFlow}.
+ *
+ * <p>Comprueban el filtrado de feedback visual por jugador local y la
+ * navegación a la pantalla final cuando el flujo solicita game over.</p>
+ */
 class GameScreenFlowTest {
     @Test
     void bindSceneEventsEmitsFeedbackOnlyForLocalPlayer() {

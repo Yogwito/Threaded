@@ -27,6 +27,9 @@ public final class EventNames {
     public static final String COIN_COLLECTED = "COIN_COLLECTED";
     public static final String PUSH_BLOCK_MOVED = "PUSH_BLOCK_MOVED";
 
+    /**
+     * Clase utilitaria de constantes; no debe instanciarse.
+     */
     private EventNames() {
     }
 }

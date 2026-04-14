@@ -189,6 +189,12 @@ public final class LobbyScreenFlow {
             : "Listo! Esperando al host...";
     }
 
+    /**
+     * Garantiza que el flujo ya creó su coordinador antes de delegar operaciones.
+     *
+     * @return coordinador de lobby activo
+     * @throws IllegalStateException si la escena aún no activó el flujo
+     */
     private LobbySessionCoordinator requireCoordinator() {
         if (coordinator == null) {
             throw new IllegalStateException("El flujo del lobby aún no fue activado");

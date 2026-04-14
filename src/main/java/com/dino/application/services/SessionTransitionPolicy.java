@@ -63,6 +63,11 @@ public final class SessionTransitionPolicy {
         }
     }
 
+    /**
+     * Construye la tabla base de transiciones permitidas del runtime actual.
+     *
+     * @return mapa origen → fases destino válidas
+     */
     private Map<SessionPhase, EnumSet<SessionPhase>> buildDefaultTransitions() {
         Map<SessionPhase, EnumSet<SessionPhase>> transitions = new EnumMap<>(SessionPhase.class);
         transitions.put(SessionPhase.IDLE, EnumSet.of(SessionPhase.LOBBY));

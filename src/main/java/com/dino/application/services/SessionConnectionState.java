@@ -71,34 +71,74 @@ final class SessionConnectionState {
         expectedPlayers = 0;
     }
 
+    /**
+     * Retorna el identificador del jugador local.
+     *
+     * @return id local configurado o {@code null} si no existe sesión activa
+     */
     String getLocalPlayerId() {
         return localPlayerId;
     }
 
+    /**
+     * Retorna la IP local enlazada por la instancia actual.
+     *
+     * @return IP local configurada
+     */
     String getLocalIp() {
         return localIp;
     }
 
+    /**
+     * Retorna el puerto local enlazado por la instancia actual.
+     *
+     * @return puerto local configurado
+     */
     int getLocalPort() {
         return localPort;
     }
 
+    /**
+     * Retorna la IP del host conocida por esta sesión.
+     *
+     * @return IP del host remoto o local según el rol
+     */
     String getHostIp() {
         return hostIp;
     }
 
+    /**
+     * Retorna el puerto del host conocido por esta sesión.
+     *
+     * @return puerto del host remoto o local según el rol
+     */
     int getHostPort() {
         return hostPort;
     }
 
+    /**
+     * Indica si la instancia actual actúa como host autoritativo.
+     *
+     * @return {@code true} si la sesión local es host
+     */
     boolean isHost() {
         return host;
     }
 
+    /**
+     * Retorna el nombre visible del jugador local.
+     *
+     * @return nombre configurado para el jugador local
+     */
     String getPlayerName() {
         return playerName;
     }
 
+    /**
+     * Retorna el tamaño esperado del lobby.
+     *
+     * @return número esperado de jugadores cuando la sesión es host
+     */
     int getExpectedPlayers() {
         return expectedPlayers;
     }

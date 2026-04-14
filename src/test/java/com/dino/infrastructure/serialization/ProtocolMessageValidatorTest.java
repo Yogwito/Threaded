@@ -8,6 +8,12 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+/**
+ * Pruebas de contrato para {@link ProtocolMessageValidator}.
+ *
+ * <p>Verifica la resolución de tipos, los campos obligatorios de cada mensaje
+ * y las reglas de aceptación por fase y rol de red.</p>
+ */
 class ProtocolMessageValidatorTest {
     private final ProtocolMessageValidator validator = new ProtocolMessageValidator();
 

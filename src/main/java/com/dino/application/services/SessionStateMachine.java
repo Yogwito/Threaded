@@ -74,6 +74,12 @@ final class SessionStateMachine {
         return currentPhase == phase;
     }
 
+    /**
+     * Ejecuta una transición validada hacia la fase objetivo.
+     *
+     * @param target nueva fase deseada
+     * @throws IllegalStateException si la política no permite el cambio
+     */
     private void transitionTo(SessionPhase target) {
         if (target == currentPhase) {
             return;

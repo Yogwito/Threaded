@@ -40,6 +40,18 @@ mvn compile
 mvn test
 ```
 
+### Validar cobertura de Javadoc
+
+```bash
+./scripts/check_javadoc_coverage.sh
+```
+
+Opcionalmente puedes limitar el chequeo a una parte del repo:
+
+```bash
+./scripts/check_javadoc_coverage.sh src/main/java
+```
+
 ### Arrancar la aplicación
 
 ```bash

@@ -61,6 +61,12 @@ public final class PushBlockPhysicsService {
         }
     }
 
+    /**
+     * Resuelve choques horizontales del bloque contra sólidos y jugadores.
+     *
+     * @param block bloque actualizado en el frame
+     * @param players jugadores susceptibles de ser desplazados
+     */
     private void resolveHorizontalCollisions(PushBlock block, List<Player> players) {
         for (PlatformTile platform : worldState.platforms()) {
             if (!GameRules.intersects(block, platform)) continue;
@@ -95,6 +101,11 @@ public final class PushBlockPhysicsService {
         }
     }
 
+    /**
+     * Resuelve choques verticales del bloque contra plataformas y puerta.
+     *
+     * @param block bloque actualizado en el frame
+     */
     private void resolveVerticalCollisions(PushBlock block) {
         for (PlatformTile platform : worldState.platforms()) {
             if (!GameRules.intersects(block, platform)) continue;
@@ -117,6 +128,11 @@ public final class PushBlockPhysicsService {
         }
     }
 
+    /**
+     * Recorta la posición y limpia velocidades residuales pequeñas del bloque.
+     *
+     * @param block bloque a normalizar tras integrar física
+     */
     private void clamp(PushBlock block) {
         block.setX(Math.max(0, Math.min(GameConfig.LEVEL_WIDTH - block.getWidth(), block.getX())));
         if (block.getY() < 0) {

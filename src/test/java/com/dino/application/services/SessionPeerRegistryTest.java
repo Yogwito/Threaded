@@ -13,6 +13,12 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+/**
+ * Pruebas unitarias para {@link SessionPeerRegistry}.
+ *
+ * <p>Se enfocan en el filtrado de peers remotos y en la expiración de peers
+ * inactivos sin afectar al host local.</p>
+ */
 class SessionPeerRegistryTest {
     @Test
     void remoteAddressesExcludeLocalPeer() {

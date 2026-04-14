@@ -62,6 +62,12 @@ public final class PlayerContactService {
         refreshPlayerStackingGroundState(players);
     }
 
+    /**
+     * Recorre pares de jugadores conectados y resuelve penetraciones directas.
+     *
+     * @param players jugadores visibles en el frame actual
+     * @param stabilizer callback para aplicar correcciones finales por jugador
+     */
     private void resolvePlayerCollisions(List<Player> players, Consumer<Player> stabilizer) {
         List<Player> connected = players.stream()
             .filter(player -> player.isConnected() && player.isAlive())
@@ -95,6 +101,11 @@ public final class PlayerContactService {
         }
     }
 
+    /**
+     * Reevalúa si un jugador debe considerarse apoyado sobre otro.
+     *
+     * @param players jugadores activos del frame
+     */
     private void refreshPlayerStackingGroundState(List<Player> players) {
         for (Player player : players) {
             if (player == null || !player.isAlive() || !player.isConnected()) {
@@ -135,6 +146,14 @@ public final class PlayerContactService {
         }
     }
 
+    /**
+     * Intenta interpretar una colisión como contacto vertical tipo "pisar a otro jugador".
+     *
+     * @param topCandidate jugador que potencialmente cae encima
+     * @param bottomCandidate jugador que potencialmente sostiene
+     * @param overlapY solapamiento vertical actual
+     * @return {@code true} si el contacto se resolvió como apoyo vertical
+     */
     private boolean resolveVerticalPlayerContact(Player topCandidate, Player bottomCandidate, double overlapY) {
         double topBottom = topCandidate.getY() + topCandidate.getHeight();
         double bottomTop = bottomCandidate.getY();
@@ -160,6 +179,13 @@ public final class PlayerContactService {
         return true;
     }
 
+    /**
+     * Separa dos jugadores lateralmente amortiguando parte de su velocidad.
+     *
+     * @param a primer jugador del par
+     * @param b segundo jugador del par
+     * @param overlapX solapamiento horizontal detectado
+     */
     private void resolveSidePlayerContact(Player a, Player b, double overlapX) {
         double push = overlapX + 0.01;
         double aMobility = a.isGrounded() ? 0.38 : 0.62;

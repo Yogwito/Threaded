@@ -62,6 +62,13 @@ public final class AppRuntimeManager {
         return appContext;
     }
 
+    /**
+     * Cierra el contexto actual y construye uno nuevo ligado al mismo {@link Stage}.
+     *
+     * <p>Se usa tanto en el arranque inicial como al volver al menú principal
+     * después de una partida, garantizando un runtime limpio y sin listeners,
+     * coordinadores o peers heredados.</p>
+     */
     private void rebuildContext() {
         close();
         appContext = AppContext.create(stage, this::resetToStartMenu);

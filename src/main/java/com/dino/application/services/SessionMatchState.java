@@ -125,74 +125,146 @@ final class SessionMatchState {
         return ++nextSnapshotSeq;
     }
 
+    /**
+     * Retorna cuántas veces se reinició la sala actual.
+     */
     int getRoomResetCount() {
         return roomResetCount;
     }
 
+    /**
+     * Sobrescribe el contador de reinicios de sala.
+     *
+     * @param roomResetCount nuevo contador persistido
+     */
     void setRoomResetCount(int roomResetCount) {
         this.roomResetCount = roomResetCount;
     }
 
+    /**
+     * Retorna la razón visible del último reinicio de sala.
+     */
     String getRoomResetReason() {
         return roomResetReason;
     }
 
+    /**
+     * Actualiza el motivo visible del último reinicio.
+     *
+     * @param roomResetReason nuevo motivo textual
+     */
     void setRoomResetReason(String roomResetReason) {
         this.roomResetReason = roomResetReason;
     }
 
+    /**
+     * Retorna el índice del nivel actualmente cargado.
+     */
     int getCurrentLevelIndex() {
         return currentLevelIndex;
     }
 
+    /**
+     * Fija el índice del nivel actualmente cargado.
+     *
+     * @param currentLevelIndex nuevo índice de nivel
+     */
     void setCurrentLevelIndex(int currentLevelIndex) {
         this.currentLevelIndex = currentLevelIndex;
     }
 
+    /**
+     * Retorna el total de niveles de la campaña actual.
+     */
     int getTotalLevels() {
         return totalLevels;
     }
 
+    /**
+     * Actualiza cuántos niveles contiene la campaña.
+     *
+     * @param totalLevels cantidad total de niveles
+     */
     void setTotalLevels(int totalLevels) {
         this.totalLevels = totalLevels;
     }
 
+    /**
+     * Retorna el tiempo acumulado de juego en segundos.
+     */
     double getElapsedTime() {
         return elapsedTime;
     }
 
+    /**
+     * Sobrescribe el tiempo acumulado de juego.
+     *
+     * @param elapsedTime nuevo tiempo total en segundos
+     */
     void setElapsedTime(double elapsedTime) {
         this.elapsedTime = elapsedTime;
     }
 
+    /**
+     * Indica si la campaña sigue marcada como activa.
+     */
     boolean isGameRunning() {
         return gameRunning;
     }
 
+    /**
+     * Marca si la campaña debe considerarse activa.
+     *
+     * @param gameRunning nuevo estado de ejecución
+     */
     void setGameRunning(boolean gameRunning) {
         this.gameRunning = gameRunning;
     }
 
+    /**
+     * Retorna el nombre visible del nivel actual.
+     */
     String getCurrentLevelName() {
         return currentLevelName;
     }
 
+    /**
+     * Actualiza el nombre visible del nivel actual.
+     *
+     * @param currentLevelName nuevo nombre de presentación
+     */
     void setCurrentLevelName(String currentLevelName) {
         this.currentLevelName = currentLevelName;
     }
 
+    /**
+     * Retorna el biome o fondo visual asociado al nivel actual.
+     */
     String getCurrentBackground() {
         return currentBackground;
     }
 
+    /**
+     * Actualiza el biome o fondo visual del nivel actual.
+     *
+     * @param currentBackground nuevo identificador de fondo
+     */
     void setCurrentBackground(String currentBackground) {
         this.currentBackground = currentBackground;
     }
 
+    /**
+     * Retorna el tamaño base de tile del nivel actual.
+     */
     int getCurrentTileSize() {
         return currentTileSize;
     }
 
+    /**
+     * Actualiza el tamaño base de tile del nivel actual.
+     *
+     * @param currentTileSize nuevo tamaño de tile
+     */
     void setCurrentTileSize(int currentTileSize) {
         this.currentTileSize = currentTileSize;
     }

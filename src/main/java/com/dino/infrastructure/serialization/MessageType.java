@@ -28,6 +28,11 @@ public enum MessageType {
 
     private final String wireValue;
 
+    /**
+     * Crea un tipo asociado a su literal estable sobre la red.
+     *
+     * @param wireValue cadena exacta serializada en el campo {@code type}
+     */
     MessageType(String wireValue) {
         this.wireValue = wireValue;
     }
@@ -52,6 +57,11 @@ public enum MessageType {
         return Optional.ofNullable(BY_WIRE_VALUE.get(rawType));
     }
 
+    /**
+     * Construye el índice rápido desde valor wire a enum.
+     *
+     * @return mapa usado por {@link #fromWireValue(String)}
+     */
     private static Map<String, MessageType> buildIndex() {
         Map<String, MessageType> index = new HashMap<>();
         for (MessageType type : values()) {

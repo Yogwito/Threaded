@@ -285,6 +285,16 @@ public final class GameRenderer {
         gc.fillRect(0, 0, canvasWidth, canvasHeight);
     }
 
+    /**
+     * Dibuja una banda de bloques decorativos con desplazamiento de parallax.
+     *
+     * @param gc contexto de dibujo
+     * @param state snapshot visible del frame
+     * @param scaleX escala horizontal actual
+     * @param scaleY escala vertical actual
+     * @param tileSize tamaño lógico del tile
+     * @param segments rectángulos expresados en tiles: x, y, ancho, alto
+     */
     private void drawParallaxBand(GraphicsContext gc, GameRenderState state, double scaleX, double scaleY,
                                   int tileSize, double[][] segments) {
         for (double[] segment : segments) {
@@ -296,6 +306,17 @@ public final class GameRenderer {
         }
     }
 
+    /**
+     * Dibuja detalles geométricos secundarios del fondo.
+     *
+     * @param gc contexto de dibujo
+     * @param state snapshot visible del frame
+     * @param scaleX escala horizontal actual
+     * @param scaleY escala vertical actual
+     * @param tileSize tamaño lógico del tile
+     * @param color color de relleno del motivo
+     * @param motifs rectángulos expresados en tiles: x, y, ancho, alto
+     */
     private void drawBackgroundMotif(GraphicsContext gc, GameRenderState state, double scaleX, double scaleY,
                                      int tileSize, Color color, double[][] motifs) {
         gc.setFill(color);
@@ -308,6 +329,12 @@ public final class GameRenderer {
         }
     }
 
+    /**
+     * Superpone velos y focos de luz propios de cada biome.
+     *
+     * <p>Estos elementos son puramente estéticos y refuerzan la identidad del
+     * fondo sin requerir sprites externos.</p>
+     */
     private void drawAtmosphere(GraphicsContext gc, GameRenderState state, PixelArtTheme.Palette palette, String biome,
                                 double canvasWidth, double canvasHeight, int tileSize) {
         double drift = Math.sin(state.visualTimeSeconds() * 0.32) * 18.0;
@@ -704,6 +731,15 @@ public final class GameRenderer {
         gc.fillText(player.getName(), bodyX, bodyY - 6);
     }
 
+    /**
+     * Dibuja el anclaje circular en cada extremo visible del hilo.
+     *
+     * @param gc contexto de dibujo
+     * @param x coordenada X del anclaje
+     * @param y coordenada Y del anclaje
+     * @param lineWidth grosor base del hilo
+     * @param color color actual del hilo
+     */
     private void drawThreadAnchor(GraphicsContext gc, double x, double y, double lineWidth, Color color) {
         double outer = Math.max(6.0, lineWidth * 2.7);
         double inner = Math.max(3.0, lineWidth * 1.5);
@@ -715,6 +751,17 @@ public final class GameRenderer {
         gc.fillOval(x - inner * 0.55, y - inner * 0.55, inner * 1.1, inner * 1.1);
     }
 
+    /**
+     * Rellena una superficie con un patrón repetido de píxeles.
+     *
+     * @param gc contexto de dibujo
+     * @param x origen horizontal del área
+     * @param y origen vertical del área
+     * @param width ancho del área
+     * @param height alto del área
+     * @param color color del patrón
+     * @param spacing separación base entre repeticiones
+     */
     private void fillTilePattern(GraphicsContext gc, double x, double y, double width, double height,
                                  Color color, double spacing) {
         gc.setFill(color);
@@ -726,22 +773,62 @@ public final class GameRenderer {
         }
     }
 
+    /**
+     * Ajusta un valor al grid visual base del pixel art.
+     *
+     * @param value valor continuo original
+     * @return valor cuantizado al píxel base más cercano
+     */
     private double snap(double value) {
         return Math.rint(value / PixelArtTheme.BASE_PIXEL) * PixelArtTheme.BASE_PIXEL;
     }
 
+    /**
+     * Interpola linealmente entre dos valores.
+     *
+     * @param start valor inicial
+     * @param end valor final
+     * @param t factor normalizado entre 0 y 1
+     * @return valor interpolado
+     */
     private double lerp(double start, double end, double t) {
         return start + (end - start) * t;
     }
 
+    /**
+     * Convierte una coordenada horizontal del mundo a pantalla.
+     *
+     * @param state snapshot visible del frame
+     * @param worldX coordenada X del mundo
+     * @param scaleX escala horizontal actual
+     * @return coordenada X en pantalla
+     */
     private double worldToScreenX(GameRenderState state, double worldX, double scaleX) {
         return (worldX - state.cameraX()) * scaleX;
     }
 
+    /**
+     * Convierte una coordenada vertical del mundo a pantalla.
+     *
+     * @param state snapshot visible del frame
+     * @param worldY coordenada Y del mundo
+     * @param scaleY escala vertical actual
+     * @return coordenada Y en pantalla
+     */
     private double worldToScreenY(GameRenderState state, double worldY, double scaleY) {
         return (worldY - state.cameraY()) * scaleY;
     }
 
+    /**
+     * Determina si un rectángulo de mundo cae dentro del área visible expandida.
+     *
+     * @param state snapshot visible del frame
+     * @param x origen horizontal del objeto
+     * @param y origen vertical del objeto
+     * @param width ancho del objeto
+     * @param height alto del objeto
+     * @return {@code true} si conviene dibujarlo en este frame
+     */
     private boolean isVisible(GameRenderState state, double x, double y, double width, double height) {
         double minX = state.cameraX() - VISIBILITY_MARGIN;
         double maxX = state.cameraX() + state.viewportWidth() + VISIBILITY_MARGIN;

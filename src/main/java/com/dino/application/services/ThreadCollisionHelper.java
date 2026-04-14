@@ -14,6 +14,9 @@ import java.util.Collection;
  * sólidos.
  */
 public final class ThreadCollisionHelper {
+    /**
+     * Clase utilitaria sin estado; evita instanciación accidental.
+     */
     private ThreadCollisionHelper() {}
 
     /**
@@ -60,10 +63,23 @@ public final class ThreadCollisionHelper {
         }
     }
 
+    /**
+     * Recorta una coordenada horizontal para mantener la entidad dentro del nivel.
+     *
+     * @param x coordenada X propuesta
+     * @param width ancho de la entidad
+     * @return coordenada X válida dentro de los límites
+     */
     private static double clampX(double x, double width) {
         return Math.max(0, Math.min(GameConfig.LEVEL_WIDTH - width, x));
     }
 
+    /**
+     * Recorta una coordenada vertical para impedir posiciones por encima del techo lógico.
+     *
+     * @param y coordenada Y propuesta
+     * @return coordenada Y válida
+     */
     private static double clampY(double y) {
         return Math.max(0, y);
     }

@@ -13,6 +13,12 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+/**
+ * Pruebas del flujo de arranque {@link StartMenuFlow}.
+ *
+ * <p>Documenta el caso nominal de creación de lobby para asegurar que el menú
+ * inicial prepare la sesión host, abra el peer de red y navegue al lobby.</p>
+ */
 class StartMenuFlowTest {
     @Test
     void createLobbyInitializesHostAndNavigatesToLobby() throws Exception {

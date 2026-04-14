@@ -110,6 +110,8 @@ public class StartMenuController implements Initializable, StartMenuFlowAware {
 
     /**
      * Muestra un error breve de validación o conexión en la misma vista.
+     *
+     * @param msg mensaje legible para el usuario final
      */
     private void showError(String msg) {
         errorLabel.setText(msg);

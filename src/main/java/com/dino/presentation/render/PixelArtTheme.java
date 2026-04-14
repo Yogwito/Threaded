@@ -196,6 +196,11 @@ public final class PixelArtTheme {
         return PRIDE_STRIPES[Math.floorMod(index, PRIDE_STRIPES.length)];
     }
 
+    /**
+     * Construye la paleta neutra usada cuando el nivel no declara biome explícito.
+     *
+     * @return paleta base del juego
+     */
     private static Palette defaultPalette() {
         return new Palette(
             Color.web("#1e2029"),
