@@ -69,12 +69,10 @@ public class LobbyController implements Initializable, LobbyScreenFlowAware, Sce
                 + "   Puerto: " + lobbyScreenFlow.localPort());
             hostInfoLabel.setVisible(true);
         }
-        lobbyCanvasPane.widthProperty().addListener((obs, old, w) ->
-            lobbyPreviewCanvas.setWidth(Math.max(0, w.doubleValue()
-                - lobbyCanvasPane.getInsets().getLeft() - lobbyCanvasPane.getInsets().getRight())));
-        lobbyCanvasPane.heightProperty().addListener((obs, old, h) ->
-            lobbyPreviewCanvas.setHeight(Math.max(0, h.doubleValue()
-                - lobbyCanvasPane.getInsets().getTop() - lobbyCanvasPane.getInsets().getBottom())));
+        lobbyPreviewCanvas.setManaged(false);
+        lobbyCanvasPane.widthProperty().addListener((obs, old, w) -> syncPreviewCanvasSize());
+        lobbyCanvasPane.heightProperty().addListener((obs, old, h) -> syncPreviewCanvasSize());
+        Platform.runLater(this::syncPreviewCanvasSize);
         refreshLobbyView();
     }
 
@@ -223,6 +221,26 @@ public class LobbyController implements Initializable, LobbyScreenFlowAware, Sce
             lobbyScreenFlow.expectedPlayers(),
             timeSeconds
         );
+    }
+
+    /**
+     * Sincroniza el tamaño real del canvas con el área útil del contenedor.
+     *
+     * <p>El canvas es unmanaged para que su tamaño no altere el pref-size del
+     * StackPane y no se forme un bucle de layout al redimensionarlo.</p>
+     */
+    private void syncPreviewCanvasSize() {
+        double targetWidth = Math.max(0, lobbyCanvasPane.getWidth()
+            - lobbyCanvasPane.getInsets().getLeft() - lobbyCanvasPane.getInsets().getRight());
+        double targetHeight = Math.max(0, lobbyCanvasPane.getHeight()
+            - lobbyCanvasPane.getInsets().getTop() - lobbyCanvasPane.getInsets().getBottom());
+
+        if (Double.compare(lobbyPreviewCanvas.getWidth(), targetWidth) != 0) {
+            lobbyPreviewCanvas.setWidth(targetWidth);
+        }
+        if (Double.compare(lobbyPreviewCanvas.getHeight(), targetHeight) != 0) {
+            lobbyPreviewCanvas.setHeight(targetHeight);
+        }
     }
 
     /**

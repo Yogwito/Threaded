@@ -32,7 +32,7 @@
 
     <center>
         <HBox spacing="20" BorderPane.alignment="CENTER" style="-fx-padding: 24 28 24 28;">
-            <VBox spacing="12" prefWidth="540" HBox.hgrow="ALWAYS"
+            <VBox spacing="12" prefWidth="540" minWidth="0" HBox.hgrow="ALWAYS"
                   style="-fx-background-color: rgba(16,23,35,0.94); -fx-background-radius: 22; -fx-border-radius: 22; -fx-border-color: #31495f; -fx-border-width: 2; -fx-padding: 18;">
                 <HBox spacing="10" alignment="CENTER_LEFT">
                     <Label text="Area de pre-partida"
@@ -43,13 +43,13 @@
                 <Label text="Los jugadores aparecen aqui sin cuerda para confirmar colores, nombres y estado antes de empezar."
                        wrapText="true"
                        style="-fx-text-fill: #91a5bd; -fx-font-size: 12px; -fx-font-family: 'Monospaced';"/>
-                <StackPane fx:id="lobbyCanvasPane" maxWidth="Infinity" maxHeight="Infinity"
+                <StackPane fx:id="lobbyCanvasPane" prefHeight="320" minHeight="0" maxWidth="Infinity" maxHeight="Infinity" VBox.vgrow="ALWAYS"
                            style="-fx-background-color: linear-gradient(to bottom, #0e151f, #0b1118); -fx-background-radius: 20; -fx-border-radius: 20; -fx-border-color: #2a3d52; -fx-border-width: 1.5; -fx-padding: 10;">
-                    <Canvas fx:id="lobbyPreviewCanvas" width="490" height="1"/>
+                    <Canvas fx:id="lobbyPreviewCanvas" managed="false" width="490" height="320"/>
                 </StackPane>
             </VBox>
 
-            <VBox spacing="14" prefWidth="344"
+            <VBox spacing="14" prefWidth="344" maxWidth="344"
                   style="-fx-background-color: rgba(16,23,35,0.96); -fx-background-radius: 22; -fx-border-radius: 22; -fx-border-color: #31495f; -fx-border-width: 2; -fx-padding: 18;">
                 <Label text="Estado del lobby"
                        style="-fx-text-fill: #edf3fa; -fx-font-size: 16px; -fx-font-weight: bold; -fx-font-family: 'Monospaced';"/>
