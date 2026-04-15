@@ -50,9 +50,9 @@
     </top>
 
     <center>
-        <StackPane maxHeight="Infinity" maxWidth="Infinity" style="-fx-padding: 16 16 16 18;">
-            <StackPane fx:id="arenaPane" maxWidth="Infinity" maxHeight="Infinity" style="-fx-background-color: linear-gradient(to bottom, rgba(14,21,31,0.98), rgba(9,14,22,0.98)); -fx-background-radius: 24; -fx-border-radius: 24; -fx-border-color: rgba(83,110,138,0.78); -fx-border-width: 2; -fx-padding: 10;">
-                <Canvas fx:id="arenaCanvas" width="960" height="1"/>
+        <StackPane minWidth="0" minHeight="0" maxHeight="Infinity" maxWidth="Infinity" style="-fx-padding: 16 16 16 18;">
+            <StackPane fx:id="arenaPane" prefWidth="980" prefHeight="620" minWidth="0" minHeight="0" maxWidth="Infinity" maxHeight="Infinity" style="-fx-background-color: linear-gradient(to bottom, rgba(14,21,31,0.98), rgba(9,14,22,0.98)); -fx-background-radius: 24; -fx-border-radius: 24; -fx-border-color: rgba(83,110,138,0.78); -fx-border-width: 2; -fx-padding: 10;">
+                <Canvas fx:id="arenaCanvas" managed="false" width="980" height="620"/>
             </StackPane>
             <Label fx:id="feedbackLabel"
                    StackPane.alignment="TOP_CENTER"

@@ -94,12 +94,10 @@ public class GameController implements Initializable, GameScreenFlowAware, Scene
         feedbackLabel.setVisible(false);
         applyHudStyles();
         bindCanvasInput();
-        arenaPane.widthProperty().addListener((obs, old, w) ->
-            arenaCanvas.setWidth(Math.max(0, w.doubleValue()
-                - arenaPane.getInsets().getLeft() - arenaPane.getInsets().getRight())));
-        arenaPane.heightProperty().addListener((obs, old, h) ->
-            arenaCanvas.setHeight(Math.max(0, h.doubleValue()
-                - arenaPane.getInsets().getTop() - arenaPane.getInsets().getBottom())));
+        arenaCanvas.setManaged(false);
+        arenaPane.widthProperty().addListener((obs, old, w) -> syncArenaCanvasSize());
+        arenaPane.heightProperty().addListener((obs, old, h) -> syncArenaCanvasSize());
+        Platform.runLater(this::syncArenaCanvasSize);
     }
 
     /**
@@ -300,6 +298,26 @@ public class GameController implements Initializable, GameScreenFlowAware, Scene
             gameScreenFlow.elapsedTime()
         );
         renderer.render(arenaCanvas, state);
+    }
+
+    /**
+     * Sincroniza el tamaño de render del canvas con el área útil del contenedor.
+     *
+     * <p>El canvas queda fuera del layout para que su tamaño no realimente el
+     * pref-size del {@code arenaPane} y la escena permanezca estable.</p>
+     */
+    private void syncArenaCanvasSize() {
+        double targetWidth = Math.max(0, arenaPane.getWidth()
+            - arenaPane.getInsets().getLeft() - arenaPane.getInsets().getRight());
+        double targetHeight = Math.max(0, arenaPane.getHeight()
+            - arenaPane.getInsets().getTop() - arenaPane.getInsets().getBottom());
+
+        if (Double.compare(arenaCanvas.getWidth(), targetWidth) != 0) {
+            arenaCanvas.setWidth(targetWidth);
+        }
+        if (Double.compare(arenaCanvas.getHeight(), targetHeight) != 0) {
+            arenaCanvas.setHeight(targetHeight);
+        }
     }
 
     /**
