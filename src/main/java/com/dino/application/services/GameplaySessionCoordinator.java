@@ -37,6 +37,7 @@ public final class GameplaySessionCoordinator {
      * Crea un coordinador ligado al runtime actual.
      *
      * @param sessionService estado compartido de la sesión
+     * @param lifecycleService fachada del ciclo de vida de la sesión
      * @param networkPeer transporte UDP activo
      * @param serializer constructor de mensajes del protocolo
      * @param validator validador estructural del protocolo UDP
@@ -153,6 +154,18 @@ public final class GameplaySessionCoordinator {
         } catch (Exception e) {
             LOGGER.log(Level.FINE, "No se pudo enviar JUMP del jugador {0}", playerId);
             LOGGER.log(Level.FINER, "Detalle del error enviando JUMP", e);
+        }
+    }
+
+    /**
+     * Fuerza el reinicio de la sala actual en el host.
+     *
+     * <p>Solo tiene efecto en la instancia host; en clientes es no-op porque
+     * el snapshot siguiente ya propaga el estado reseteado.</p>
+     */
+    public void resetCurrentRoom() {
+        if (hostMatchService != null) {
+            hostMatchService.resetCurrentRoom();
         }
     }
 

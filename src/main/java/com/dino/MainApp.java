@@ -27,7 +27,9 @@ public class MainApp extends Application {
     @Override
     public void start(Stage stage) throws Exception {
         stage.setTitle("Threaded");
-        stage.setResizable(false);
+        stage.setResizable(true);
+        stage.setMinWidth(1100);
+        stage.setMinHeight(720);
         runtimeManager = new AppRuntimeManager(stage);
         stage.setOnCloseRequest(event -> runtimeManager.close());
 

@@ -29,6 +29,7 @@ public class EventBus implements EventChannel {
      *
      * @param event nombre lógico del evento
      * @param callback acción a ejecutar cuando el evento sea publicado
+     * @return handle que permite cancelar la suscripción creada
      */
     public EventSubscription subscribe(String event, Consumer<Map<String, Object>> callback) {
         lock.lock();

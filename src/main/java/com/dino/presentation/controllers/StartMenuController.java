@@ -46,6 +46,9 @@ public class StartMenuController implements Initializable, StartMenuFlowAware {
 
     /**
      * Inicializa el formulario base y adapta los campos al modo elegido.
+     *
+     * @param url ubicación del recurso FXML, si JavaFX la proporciona
+     * @param rb bundle de recursos asociado a la vista, si existe
      */
     @Override
     public void initialize(URL url, ResourceBundle rb) {

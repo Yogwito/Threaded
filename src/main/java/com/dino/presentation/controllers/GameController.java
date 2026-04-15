@@ -9,13 +9,21 @@ import com.dino.presentation.flow.GameplayFeedback;
 import com.dino.presentation.render.GameRenderState;
 import com.dino.presentation.render.GameRenderer;
 import javafx.animation.AnimationTimer;
+import javafx.animation.FadeTransition;
+import javafx.animation.KeyFrame;
+import javafx.animation.KeyValue;
+import javafx.animation.Timeline;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.control.Label;
 import javafx.scene.control.ListView;
+import javafx.scene.input.KeyCode;
 import javafx.scene.input.MouseButton;
+import javafx.scene.layout.Pane;
+import javafx.scene.layout.StackPane;
+import javafx.util.Duration;
 
 import java.net.URL;
 import java.util.ResourceBundle;
@@ -31,6 +39,8 @@ import java.util.ResourceBundle;
 public class GameController implements Initializable, GameScreenFlowAware, SceneLifecycleAware {
     private static final double MAX_FRAME_DELTA_SECONDS = 0.05;
     @FXML private Canvas arenaCanvas;
+    @FXML private StackPane arenaPane;
+    @FXML private Pane levelTransitionOverlay;
     @FXML private Label timerLabel;
     @FXML private Label levelLabel;
     @FXML private Label roomStatusLabel;
@@ -42,6 +52,8 @@ public class GameController implements Initializable, GameScreenFlowAware, Scene
 
     private static final double CAMERA_SMOOTHING = 0.16;
     private static final double FEEDBACK_DURATION_SECONDS = 1.4;
+    /** Segundos sin snapshot antes de avisar al cliente que el host puede haberse caído. */
+    private static final double HOST_TIMEOUT_SECONDS = GameConfig.SNAPSHOT_STALE_WARNING_SECONDS * 5;
 
     private final GameRenderer renderer = new GameRenderer();
     private final SubscriptionGroup subscriptions = new SubscriptionGroup();
@@ -49,6 +61,7 @@ public class GameController implements Initializable, GameScreenFlowAware, Scene
     private AnimationTimer gameLoop;
     private long lastNano = 0;
     private double feedbackTimer = 0;
+    private double timeSinceLastSnapshot = 0;
     private double cameraX = 0;
     private double cameraY = 0;
     private double currentZoom = GameConfig.BASE_ZOOM;
@@ -72,12 +85,21 @@ public class GameController implements Initializable, GameScreenFlowAware, Scene
      * <p>Las suscripciones al bus, el loop y el coordinador de gameplay se
      * activan en {@link #onSceneShown()} para que puedan liberarse de forma
      * explícita al abandonar la escena.</p>
+     *
+     * @param url ubicación del recurso FXML, si JavaFX la proporciona
+     * @param rb bundle de recursos asociado a la vista, si existe
      */
     @Override
     public void initialize(URL url, ResourceBundle rb) {
         feedbackLabel.setVisible(false);
         applyHudStyles();
         bindCanvasInput();
+        arenaPane.widthProperty().addListener((obs, old, w) ->
+            arenaCanvas.setWidth(Math.max(0, w.doubleValue()
+                - arenaPane.getInsets().getLeft() - arenaPane.getInsets().getRight())));
+        arenaPane.heightProperty().addListener((obs, old, h) ->
+            arenaCanvas.setHeight(Math.max(0, h.doubleValue()
+                - arenaPane.getInsets().getTop() - arenaPane.getInsets().getBottom())));
     }
 
     /**
@@ -94,12 +116,19 @@ public class GameController implements Initializable, GameScreenFlowAware, Scene
         lastWorldMouseX = 0;
         lastWorldMouseY = 0;
         hasAimTarget = false;
+        timeSinceLastSnapshot = 0;
 
         subscriptions.add(gameScreenFlow.bindSceneEvents(
             () -> Platform.runLater(this::refreshUI),
             () -> Platform.runLater(this::onGameOver),
             feedback -> Platform.runLater(() -> showFeedback(feedback.text(), feedback.colorHex()))
         ));
+
+        arenaCanvas.getScene().setOnKeyPressed(ev -> {
+            if (ev.getCode() == GameConfig.RESTART_KEY && gameScreenFlow.isHost()) {
+                gameScreenFlow.resetCurrentRoom();
+            }
+        });
 
         refreshUI();
         startGameLoop();
@@ -110,6 +139,9 @@ public class GameController implements Initializable, GameScreenFlowAware, Scene
      */
     @Override
     public void onSceneHidden() {
+        if (arenaCanvas.getScene() != null) {
+            arenaCanvas.getScene().setOnKeyPressed(null);
+        }
         subscriptions.clear();
         stopGameLoop();
     }
@@ -184,8 +216,14 @@ public class GameController implements Initializable, GameScreenFlowAware, Scene
 
                 gameScreenFlow.advanceFrame(dt);
 
-                if (!gameScreenFlow.isHost() && hasAimTarget) {
-                    sendAim(lastWorldMouseX, lastWorldMouseY);
+                if (!gameScreenFlow.isHost()) {
+                    timeSinceLastSnapshot += dt;
+                    if (timeSinceLastSnapshot > HOST_TIMEOUT_SECONDS) {
+                        showHostDisconnectedWarning();
+                    }
+                    if (hasAimTarget) {
+                        sendAim(lastWorldMouseX, lastWorldMouseY);
+                    }
                 }
 
                 updateCamera(dt);
@@ -232,8 +270,8 @@ public class GameController implements Initializable, GameScreenFlowAware, Scene
      * @return coordenada horizontal equivalente en el mundo visible
      */
     private double canvasToWorldX(double canvasX) {
-        double scaleX = arenaCanvas.getWidth() / getViewportWorldWidth();
-        return cameraX + (canvasX / scaleX);
+        double scale = renderer.getRenderScale();
+        return cameraX + (canvasX - renderer.getRenderOffsetX()) / scale;
     }
 
     /**
@@ -243,8 +281,8 @@ public class GameController implements Initializable, GameScreenFlowAware, Scene
      * @return coordenada vertical equivalente en el mundo visible
      */
     private double canvasToWorldY(double canvasY) {
-        double scaleY = arenaCanvas.getHeight() / getViewportWorldHeight();
-        return cameraY + (canvasY / scaleY);
+        double scale = renderer.getRenderScale();
+        return cameraY + (canvasY - renderer.getRenderOffsetY()) / scale;
     }
 
     /**
@@ -305,6 +343,7 @@ public class GameController implements Initializable, GameScreenFlowAware, Scene
      * Sincroniza HUD, ranking y bitácora con el snapshot visible del juego.
      */
     private void refreshUI() {
+        timeSinceLastSnapshot = 0;
         var viewModel = gameScreenFlow.buildHudViewModel();
         playersList.getItems().setAll(viewModel.playerEntries());
         eventLog.getItems().setAll(viewModel.eventEntries());
@@ -363,9 +402,91 @@ public class GameController implements Initializable, GameScreenFlowAware, Scene
      * @param text texto visible en la píldora de feedback
      * @param colorHex color CSS usado para resaltar el mensaje
      */
+    /**
+     * Muestra un aviso persistente cuando el cliente no recibe snapshots del host.
+     *
+     * <p>Se activa cuando {@code timeSinceLastSnapshot} supera {@code HOST_TIMEOUT_SECONDS}.
+     * El aviso desaparece automáticamente en cuanto llega el siguiente snapshot y se
+     * resetea el contador.</p>
+     */
+    private void showHostDisconnectedWarning() {
+        feedbackLabel.setText("Sin señal del host — reconectando...");
+        feedbackLabel.setStyle(
+            "-fx-background-color: rgba(60,10,10,0.92); "
+                + "-fx-background-radius: 999; "
+                + "-fx-border-color: rgba(220,60,60,0.6); -fx-border-width: 1.8; -fx-border-radius: 999; "
+                + "-fx-padding: 10 22 10 22; "
+                + "-fx-text-fill: #ff8888; "
+                + "-fx-font-family: 'Monospaced'; -fx-font-size: 15px; -fx-font-weight: bold;"
+        );
+        feedbackLabel.setVisible(true);
+        feedbackLabel.setOpacity(1.0);
+        feedbackLabel.setTranslateY(0);
+        feedbackTimer = FEEDBACK_DURATION_SECONDS;
+    }
+
+    /**
+     * Sacude el área de juego con un micro-desplazamiento para reforzar el impacto de muerte.
+     *
+     * <p>Anima la traslación X del {@code arenaPane} en cuatro ciclos alternativos de ±5 px
+     * durante 180 ms en total, volviendo a 0 al terminar.</p>
+     */
+    private void triggerScreenShake() {
+        double amp = 5.0;
+        double step = 180.0 / 8;
+        Timeline shake = new Timeline(
+            new KeyFrame(Duration.millis(step * 1), new KeyValue(arenaPane.translateXProperty(),  amp)),
+            new KeyFrame(Duration.millis(step * 2), new KeyValue(arenaPane.translateXProperty(), -amp)),
+            new KeyFrame(Duration.millis(step * 3), new KeyValue(arenaPane.translateXProperty(),  amp)),
+            new KeyFrame(Duration.millis(step * 4), new KeyValue(arenaPane.translateXProperty(), -amp)),
+            new KeyFrame(Duration.millis(step * 5), new KeyValue(arenaPane.translateXProperty(),  amp * 0.5)),
+            new KeyFrame(Duration.millis(step * 6), new KeyValue(arenaPane.translateXProperty(), -amp * 0.5)),
+            new KeyFrame(Duration.millis(step * 7), new KeyValue(arenaPane.translateXProperty(),  amp * 0.25)),
+            new KeyFrame(Duration.millis(step * 8), new KeyValue(arenaPane.translateXProperty(),  0.0))
+        );
+        shake.play();
+    }
+
+    /**
+     * Ejecuta el flash negro de transición entre niveles: fade-in 250 ms → fade-out 250 ms.
+     */
+    private void triggerLevelTransition() {
+        levelTransitionOverlay.setOpacity(0.0);
+        levelTransitionOverlay.setVisible(true);
+
+        FadeTransition fadeIn = new FadeTransition(Duration.millis(250), levelTransitionOverlay);
+        fadeIn.setFromValue(0.0);
+        fadeIn.setToValue(1.0);
+        fadeIn.setOnFinished(e -> {
+            FadeTransition fadeOut = new FadeTransition(Duration.millis(250), levelTransitionOverlay);
+            fadeOut.setFromValue(1.0);
+            fadeOut.setToValue(0.0);
+            fadeOut.setOnFinished(ev -> levelTransitionOverlay.setVisible(false));
+            fadeOut.play();
+        });
+        fadeIn.play();
+    }
+
+    /**
+     * Muestra un mensaje temporal resaltado para eventos relevantes del gameplay.
+     *
+     * <p>Además de actualizar la píldora de HUD, dispara efectos secundarios
+     * visuales según el texto recibido: flash rojo al morir y fade de pantalla
+     * al completar un nivel.</p>
+     *
+     * @param text texto visible en la píldora de feedback
+     * @param colorHex color CSS del texto del mensaje
+     */
     private void showFeedback(String text, String colorHex) {
         feedbackTimer = FEEDBACK_DURATION_SECONDS;
         feedbackLabel.setText(text);
+        if ("Nivel completado".equals(text)) {
+            triggerLevelTransition();
+        }
+        if ("Caida al vacio".equals(text) || "Hazard".equals(text)) {
+            renderer.markDeath();
+            triggerScreenShake();
+        }
         feedbackLabel.setStyle(
             "-fx-background-color: rgba(9,14,24,0.92); "
                 + "-fx-background-radius: 999; "

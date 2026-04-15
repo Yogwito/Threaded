@@ -167,10 +167,12 @@ public final class LevelFlowService {
     }
 
     /**
-     * Procesa muertes por caída o hazards. Si ocurre una falla, reinicia la
-     * sala actual y corta el tick.
+     * Procesa muertes por caída al vacío o contacto con hazard. Si ocurre un
+     * fallo, penaliza al jugador responsable, reinicia la sala completa y corta
+     * el tick para que el host no siga simulando un estado inválido.
      *
-     * @return {@code true} si el tick debe abortarse porque hubo reset
+     * @param players jugadores conectados y vivos a evaluar en este tick
+     * @return {@code true} si el tick debe abortarse porque se produjo un reset
      */
     public boolean resolveFailures(List<Player> players) {
         for (Player player : players) {
@@ -216,6 +218,15 @@ public final class LevelFlowService {
         loadLevel(nextLevel, false);
         eventPublisher.publish(EventNames.LEVEL_ADVANCED, Map.of("levelIndex", nextLevel));
         return false;
+    }
+
+    /**
+     * Permite a colaboradores externos forzar el reinicio de la sala actual.
+     *
+     * @param reason motivo legible del reinicio para HUD y bitácora
+     */
+    public void triggerReset(String reason) {
+        resetRoom(reason);
     }
 
     /**

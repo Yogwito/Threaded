@@ -39,6 +39,8 @@ public enum MessageType {
 
     /**
      * Retorna el valor textual que viaja por UDP.
+     *
+     * @return literal estable serializado en el campo {@code type}
      */
     public String wireValue() {
         return wireValue;

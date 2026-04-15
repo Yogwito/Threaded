@@ -27,6 +27,7 @@ public class CreateSessionUseCase {
      * Construye el caso de uso con las dependencias mínimas necesarias.
      *
      * @param sessionService estado de sesión que quedará inicializado como host
+     * @param lifecycleService fachada que configura la sesión como host
      * @param udpPeer socket UDP local
      * @param eventBus bus de eventos para notificar la creación del jugador local
      */

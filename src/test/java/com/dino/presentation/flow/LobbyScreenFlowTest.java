@@ -70,4 +70,28 @@ class LobbyScreenFlowTest {
 
         assertEquals("game", navigation.getLastScreen());
     }
+
+    @Test
+    void readyStatusMessageReflectsLocalReadyToggle() {
+        EventBus events = new EventBus();
+        SessionService session = new SessionService(events);
+        SessionLifecycleService lifecycle = new SessionLifecycleService(session);
+        lifecycle.configureAsClient("client-1", "Client", "127.0.0.1", 7001, "127.0.0.1", 7000);
+        Player localPlayer = new Player("client-1", "Client", "blue");
+        session.addPlayer(localPlayer);
+
+        LobbyScreenFlow flow = new LobbyScreenFlow(
+            session,
+            events,
+            () -> null,
+            new RecordingSceneNavigation(),
+            new LobbyPlayerListFormatter()
+        );
+
+        assertEquals("Listo cancelado.", flow.readyStatusMessage());
+
+        localPlayer.setReady(true);
+
+        assertEquals("Listo! Esperando al host...", flow.readyStatusMessage());
+    }
 }

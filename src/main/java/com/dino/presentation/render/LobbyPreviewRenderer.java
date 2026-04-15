@@ -151,8 +151,6 @@ public final class LobbyPreviewRenderer {
             gc.setFont(BODY_FONT);
             gc.setFill(player.isReady() ? Color.web("#92e6a7") : Color.web("#87c6f5"));
             gc.fillText(player.isReady() ? "Listo" : "Conectado", avatarX + avatarSize + 16, y + 52);
-            gc.setFill(Color.web("#93a2b8"));
-            gc.fillText("Color: " + player.getColor(), avatarX + avatarSize + 16, y + 72);
         } else {
             gc.setStroke(Color.web("#2c3645"));
             gc.setLineDashes(8, 6);

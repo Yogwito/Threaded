@@ -1,5 +1,6 @@
 package com.dino.config;
 
+import javafx.scene.input.KeyCode;
 import javafx.scene.paint.Color;
 
 import java.util.Map;
@@ -12,6 +13,9 @@ import java.util.Map;
  * balance sin tocar la lógica de las clases principales.</p>
  */
 public final class GameConfig {
+    /** Tecla que el host puede presionar durante el juego para reiniciar la sala actual. */
+    public static final KeyCode RESTART_KEY = KeyCode.R;
+
     /** Ancho fijo de la ventana principal. */
     public static final int WINDOW_WIDTH = 1280;
     /** Alto fijo de la ventana principal. */
@@ -88,6 +92,25 @@ public final class GameConfig {
     public static final double PUSH_BLOCK_FRICTION = 1800.0;
     public static final double PUSH_BLOCK_MAX_SPEED = 220.0;
     public static final double PUSH_BLOCK_PUSH_IMPULSE = 0.78;
+    /** Reducción de velocidad horizontal del jugador al colisionar con un bloque empujable. */
+    public static final double PUSH_BLOCK_PLAYER_VX_DAMPING = 0.55;
+    /** Velocidad mínima del bloque para emitir el evento de sonido de empuje (unidades/s). */
+    public static final double PUSH_BLOCK_SOUND_SPEED_THRESHOLD = 18.0;
+    /** Cooldown en segundos entre eventos de sonido de empuje de bloque. */
+    public static final double PUSH_BLOCK_SOUND_COOLDOWN_SECONDS = 0.18;
+
+    /** Factor de amortiguación horizontal aplicado al jugador cuando el hilo excede su límite duro. */
+    public static final double THREAD_WALL_HIT_VX_DAMPING = 0.85;
+    /** Factor de amortiguación vertical aplicado al jugador cuando el hilo excede su límite duro. */
+    public static final double THREAD_WALL_HIT_VY_DAMPING = 0.60;
+    /** Movilidad relativa de un jugador en suelo para repartir impulsos del hilo (menor = se mueve menos). */
+    public static final double THREAD_MOBILITY_GROUNDED = 0.35;
+    /** Movilidad relativa de un jugador en aire para repartir impulsos del hilo. */
+    public static final double THREAD_MOBILITY_AIR = 0.65;
+    /** Cooldown en segundos entre eventos de sonido de tensión del hilo. */
+    public static final double THREAD_SOUND_COOLDOWN_SECONDS = 0.16;
+    /** Estiramiento mínimo en unidades de mundo para activar el sonido del hilo. */
+    public static final double THREAD_STRETCH_SOUND_THRESHOLD = 8.0;
 
     public static final double COIN_SIZE = 16.0;
     public static final int SCORE_COIN_SMALL = 10;
@@ -103,6 +126,23 @@ public final class GameConfig {
     public static final double BASE_ZOOM = 1.0;
     public static final double MIN_ZOOM = 0.92;
     public static final double MAX_ZOOM = 1.05;
+
+    /** Margen de píxeles extra alrededor del viewport para evitar pop-in de objetos en los bordes. */
+    public static final double RENDERER_VISIBILITY_MARGIN = 96.0;
+    /** Duración en milisegundos del flash rojo que aparece al morir. */
+    public static final long DEATH_FLASH_DURATION_MS = 500;
+    /** Opacidad máxima (0–1) del overlay rojo de muerte al inicio del flash. */
+    public static final double DEATH_FLASH_MAX_ALPHA = 0.60;
+    /** Duración en frames de una partícula de moneda antes de desaparecer. */
+    public static final int COIN_PARTICLE_FRAMES = 25;
+    /** Aceleración gravitatoria aplicada por frame a las partículas de moneda (unidades de mundo). */
+    public static final double COIN_PARTICLE_GRAVITY = 0.30;
+    /** Semi-rango de la velocidad horizontal aleatoria de partículas de moneda (±VX_RANGE). */
+    public static final double COIN_PARTICLE_VX_RANGE = 3.0;
+    /** Velocidad mínima de ascenso de partículas de moneda (unidades de mundo/frame). */
+    public static final double COIN_PARTICLE_VY_MIN = 1.0;
+    /** Rango adicional de velocidad de ascenso aleatoria de partículas de moneda. */
+    public static final double COIN_PARTICLE_VY_RANGE = 4.0;
 
     /** Colores base disponibles para identificar a cada jugador. */
     public static final Map<String, Color> COLORS = Map.of(

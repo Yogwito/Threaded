@@ -13,6 +13,7 @@ public interface EventChannel extends EventPublisher {
      *
      * @param event nombre lógico del evento
      * @param callback acción a ejecutar cuando el evento sea publicado
+     * @return handle que permite cancelar la suscripción creada
      */
     EventSubscription subscribe(String event, Consumer<Map<String, Object>> callback);
 

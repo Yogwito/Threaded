@@ -24,6 +24,7 @@ public class EventLogObserver {
      * Registra suscripciones al bus para construir el log incremental.
      *
      * @param eventBus bus de eventos interno de la aplicación
+     * @param sessionService acceso al snapshot de jugadores para resolver nombres
      */
     public EventLogObserver(EventChannel eventBus, SessionService sessionService) {
         this.sessionService = sessionService;

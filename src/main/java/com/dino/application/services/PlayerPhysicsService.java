@@ -22,7 +22,6 @@ import java.util.Map;
  * mundo.</p>
  */
 public final class PlayerPhysicsService {
-    private static final double PUSH_BLOCK_SOUND_COOLDOWN = 0.18;
     private final SessionWorldState worldState;
     private final EventPublisher eventPublisher;
     private final ThreadConstraintService threadConstraintService;
@@ -237,8 +236,8 @@ public final class PlayerPhysicsService {
             player.setX(previousX);
             player.setY(previousY);
             threadConstraintService.cancelSeparatingVelocityAgainstThreadNeighbors(player);
-            player.setVx(player.getVx() * 0.85);
-            player.setVy(player.getVy() * 0.6);
+            player.setVx(player.getVx() * GameConfig.THREAD_WALL_HIT_VX_DAMPING);
+            player.setVy(player.getVy() * GameConfig.THREAD_WALL_HIT_VY_DAMPING);
             stabilizePlayer(player);
         }
     }
@@ -280,7 +279,7 @@ public final class PlayerPhysicsService {
                 block.setVx(Math.max(-GameConfig.PUSH_BLOCK_MAX_SPEED,
                     Math.min(block.getVx(), player.getVx() * GameConfig.PUSH_BLOCK_PUSH_IMPULSE)));
             }
-            player.setVx(player.getVx() * 0.55);
+            player.setVx(player.getVx() * GameConfig.PUSH_BLOCK_PLAYER_VX_DAMPING);
             publishPushBlockFeedback(player, block);
         }
     }
@@ -351,10 +350,10 @@ public final class PlayerPhysicsService {
      * @param block caja afectada
      */
     private void publishPushBlockFeedback(Player player, PushBlock block) {
-        if (pushBlockSoundCooldownRemaining > 0 || Math.abs(block.getVx()) < 18) {
+        if (pushBlockSoundCooldownRemaining > 0 || Math.abs(block.getVx()) < GameConfig.PUSH_BLOCK_SOUND_SPEED_THRESHOLD) {
             return;
         }
-        pushBlockSoundCooldownRemaining = PUSH_BLOCK_SOUND_COOLDOWN;
+        pushBlockSoundCooldownRemaining = GameConfig.PUSH_BLOCK_SOUND_COOLDOWN_SECONDS;
         eventPublisher.publish(EventNames.PUSH_BLOCK_MOVED, Map.of(
             "playerId", player.getId(),
             "blockId", block.getId(),

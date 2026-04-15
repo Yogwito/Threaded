@@ -12,6 +12,7 @@ import javafx.scene.canvas.Canvas;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.ListView;
+import javafx.scene.layout.StackPane;
 
 import java.net.URL;
 import java.util.ResourceBundle;
@@ -27,8 +28,11 @@ import java.util.TimerTask;
  */
 public class LobbyController implements Initializable, LobbyScreenFlowAware, SceneLifecycleAware {
     @FXML private Canvas lobbyPreviewCanvas;
+    @FXML private StackPane lobbyCanvasPane;
     @FXML private ListView<String> playersList;
+    @FXML private Button readyBtn;
     @FXML private Button startBtn;
+    @FXML private Label hostInfoLabel;
     @FXML private Label statusLabel;
     @FXML private Label connectedSummaryLabel;
     @FXML private Label readySummaryLabel;
@@ -53,10 +57,24 @@ public class LobbyController implements Initializable, LobbyScreenFlowAware, Sce
      *
      * <p>Las suscripciones y el polling de red arrancan después, cuando la
      * escena queda activa, para poder liberarlos limpiamente al abandonarla.</p>
+     *
+     * @param url ubicación del recurso FXML, si JavaFX la proporciona
+     * @param rb bundle de recursos asociado a la vista, si existe
      */
     @Override
     public void initialize(URL url, ResourceBundle rb) {
         startBtn.setVisible(lobbyScreenFlow.isHost());
+        if (lobbyScreenFlow.isHost()) {
+            hostInfoLabel.setText("Tu IP: " + lobbyScreenFlow.localIp()
+                + "   Puerto: " + lobbyScreenFlow.localPort());
+            hostInfoLabel.setVisible(true);
+        }
+        lobbyCanvasPane.widthProperty().addListener((obs, old, w) ->
+            lobbyPreviewCanvas.setWidth(Math.max(0, w.doubleValue()
+                - lobbyCanvasPane.getInsets().getLeft() - lobbyCanvasPane.getInsets().getRight())));
+        lobbyCanvasPane.heightProperty().addListener((obs, old, h) ->
+            lobbyPreviewCanvas.setHeight(Math.max(0, h.doubleValue()
+                - lobbyCanvasPane.getInsets().getTop() - lobbyCanvasPane.getInsets().getBottom())));
         refreshLobbyView();
     }
 
@@ -95,19 +113,22 @@ public class LobbyController implements Initializable, LobbyScreenFlowAware, Sce
         Platform.runLater(() -> {
             playersList.getItems().setAll(lobbyScreenFlow.playerEntries());
             updateSummaryLabels();
+            updateReadyButton();
             renderLobbyPreview(0);
         });
     }
 
     /**
-     * Marca al jugador local como listo y propaga el cambio al resto de peers.
+     * Alterna el estado READY del jugador local y actualiza el botón.
      */
     @FXML
     public void onListo() {
         try {
-            lobbyScreenFlow.markLocalReady();
+            boolean nextReadyState = !lobbyScreenFlow.isLocalPlayerReady();
+            lobbyScreenFlow.setLocalReady(nextReadyState);
             statusLabel.setText(lobbyScreenFlow.readyStatusMessage());
             updateSummaryLabels();
+            updateReadyButton();
         } catch (Exception e) {
             statusLabel.setText("Error: " + e.getMessage());
         }
@@ -202,6 +223,27 @@ public class LobbyController implements Initializable, LobbyScreenFlowAware, Sce
             lobbyScreenFlow.expectedPlayers(),
             timeSeconds
         );
+    }
+
+    /**
+     * Sincroniza el texto y estilo del botón READY según el estado actual del jugador local.
+     *
+     * <p>Muestra "READY" en azul cuando el jugador aún no confirmó, y
+     * "CANCELAR" en gris cuando ya está listo, para indicar la acción disponible.</p>
+     */
+    private void updateReadyButton() {
+        boolean ready = lobbyScreenFlow.isLocalPlayerReady();
+        if (ready) {
+            readyBtn.setText("CANCELAR");
+            readyBtn.setStyle("-fx-background-color: linear-gradient(to bottom, #6a7d8e, #4e5f6d); "
+                + "-fx-text-fill: #d8e6f0; -fx-font-weight: bold; -fx-font-size: 14px; "
+                + "-fx-font-family: 'Monospaced'; -fx-padding: 12 26; -fx-background-radius: 14; -fx-cursor: hand;");
+        } else {
+            readyBtn.setText("READY");
+            readyBtn.setStyle("-fx-background-color: linear-gradient(to bottom, #8ae2ff, #5fc8f4); "
+                + "-fx-text-fill: #0d1826; -fx-font-weight: bold; -fx-font-size: 14px; "
+                + "-fx-font-family: 'Monospaced'; -fx-padding: 12 26; -fx-background-radius: 14; -fx-cursor: hand;");
+        }
     }
 
     /**

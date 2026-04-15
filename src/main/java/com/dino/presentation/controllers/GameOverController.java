@@ -43,6 +43,9 @@ public class GameOverController implements Initializable, GameOverScreenFlowAwar
 
     /**
      * Construye la tabla final de resultados a partir del snapshot de sesión.
+     *
+     * @param url ubicación del recurso FXML, si JavaFX la proporciona
+     * @param rb bundle de recursos asociado a la vista, si existe
      */
     @Override
     public void initialize(URL url, ResourceBundle rb) {

@@ -31,6 +31,10 @@ public final class ProtocolMessageValidator {
 
     /**
      * Indica si el tipo puede aceptarse durante el lobby según el rol local.
+     *
+     * @param type tipo de mensaje recibido
+     * @param hostRole {@code true} si la instancia local actúa como host
+     * @return {@code true} si ese tipo es válido en lobby para ese rol
      */
     public boolean isAcceptedInLobby(MessageType type, boolean hostRole) {
         return switch (type) {
@@ -42,6 +46,10 @@ public final class ProtocolMessageValidator {
 
     /**
      * Indica si el tipo puede aceptarse durante gameplay según el rol local.
+     *
+     * @param type tipo de mensaje recibido
+     * @param hostRole {@code true} si la instancia local actúa como host
+     * @return {@code true} si ese tipo es válido en gameplay para ese rol
      */
     public boolean isAcceptedInGameplay(MessageType type, boolean hostRole) {
         return switch (type) {

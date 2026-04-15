@@ -1,0 +1,58 @@
+/* ── Botón principal ───────────────────────────────────────────── */
+.lobby-btn {
+    -fx-background-color: transparent;
+    -fx-text-fill: #00e5ff;
+    -fx-border-color: #00e5ff;
+    -fx-border-width: 1.5;
+    -fx-border-radius: 12;
+    -fx-background-radius: 12;
+    -fx-font-family: 'Monospaced';
+    -fx-font-weight: bold;
+    -fx-font-size: 14px;
+    -fx-padding: 13 32;
+    -fx-cursor: hand;
+}
+.lobby-btn:hover {
+    -fx-background-color: #00e5ff;
+    -fx-text-fill: #080f18;
+    -fx-border-color: #00e5ff;
+}
+.lobby-btn:pressed {
+    -fx-background-color: #00b8cc;
+    -fx-text-fill: #080f18;
+    -fx-border-color: #00b8cc;
+}
+
+/* ── Campos de texto ───────────────────────────────────────────── */
+.field-std {
+    -fx-background-color: #080f18;
+    -fx-text-fill: #b8cfe0;
+    -fx-prompt-text-fill: #253d52;
+    -fx-border-color: #1a3450;
+    -fx-border-width: 1.5;
+    -fx-border-radius: 10;
+    -fx-background-radius: 10;
+    -fx-padding: 9 12;
+    -fx-font-family: 'Monospaced';
+    -fx-font-size: 13px;
+    -fx-highlight-fill: #00e5ff;
+    -fx-highlight-text-fill: #080f18;
+}
+.field-std:focused {
+    -fx-border-color: rgba(0, 229, 255, 0.55);
+    -fx-effect: dropshadow(gaussian, rgba(0,229,255,0.12), 10, 0, 0, 0);
+}
+.field-std:disabled {
+    -fx-opacity: 0.38;
+}
+
+/* ── Radio buttons ─────────────────────────────────────────────── */
+.mode-radio {
+    -fx-text-fill: #9ab8cc;
+    -fx-font-size: 11px;
+    -fx-font-weight: bold;
+    -fx-font-family: 'Monospaced';
+}
+.mode-radio:selected {
+    -fx-text-fill: #00e5ff;
+}

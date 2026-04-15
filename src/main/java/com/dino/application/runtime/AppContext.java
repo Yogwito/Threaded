@@ -117,6 +117,8 @@ public final class AppContext {
      *
      * <p>Centraliza en el contexto la construcción del adaptador de red para
      * que los controladores no dependan directamente de {@link UdpPeer}.</p>
+     *
+     * @return peer UDP recién creado y registrado como transporte activo
      */
     public NetworkPeer openNetworkPeer() {
         shutdownNetworking();
@@ -127,6 +129,8 @@ public final class AppContext {
     /**
      * Crea la simulación autoritativa del host usando las dependencias ya
      * compuestas por el runtime.
+     *
+     * @return servicio autoritativo del host ligado a la sesión actual
      */
     public HostMatchService createHostMatchService() {
         hostMatchService = new HostMatchService(sessionService, sessionLifecycleService, eventBus, levelCatalog);

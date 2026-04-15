@@ -30,6 +30,7 @@ public class JoinSessionUseCase {
      * Construye el caso de uso con acceso al estado, red y serialización.
      *
      * @param sessionService estado compartido de la sesión
+     * @param lifecycleService fachada que configura la sesión como cliente
      * @param udpPeer socket UDP del cliente
      * @param serializer serializador de mensajes de red
      * @param eventBus bus de eventos interno

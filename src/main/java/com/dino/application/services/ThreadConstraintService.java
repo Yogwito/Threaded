@@ -17,8 +17,6 @@ import java.util.function.Consumer;
  * sólidos cuando existe obstrucción geométrica.</p>
  */
 public final class ThreadConstraintService {
-    private static final double THREAD_SOUND_COOLDOWN = 0.16;
-
     private final SessionWorldState worldState;
     private final EventPublisher eventPublisher;
     private double threadSoundCooldownRemaining = 0;
@@ -47,7 +45,7 @@ public final class ThreadConstraintService {
      * @param dt delta temporal en segundos
      */
     public void tickCooldowns(double dt) {
-        threadSoundCooldownRemaining = Math.max(0, threadSoundCooldownRemaining - dt);
+        threadSoundCooldownRemaining = Math.max(0.0, threadSoundCooldownRemaining - dt);
     }
 
     /**
@@ -70,7 +68,7 @@ public final class ThreadConstraintService {
             double dx = neighbor.getCenterX() - player.getCenterX();
             double dy = neighbor.getCenterY() - player.getCenterY();
             double distance = Math.sqrt(dx * dx + dy * dy);
-            if (distance == 0 || distance <= GameConfig.THREAD_HARD_LIMIT) continue;
+            if (distance < 1.0 || distance <= GameConfig.THREAD_HARD_LIMIT) continue;
 
             double nx = dx / distance;
             double ny = dy / distance;
@@ -101,10 +99,31 @@ public final class ThreadConstraintService {
             double dx = b.getCenterX() - a.getCenterX();
             double dy = b.getCenterY() - a.getCenterY();
             double distance = Math.sqrt(dx * dx + dy * dy);
-            if (distance == 0 || distance <= GameConfig.THREAD_REST_DISTANCE) continue;
 
+            // Guard: distancia demasiado pequeña para calcular dirección confiable
+            if (distance < 1.0) continue;
+
+            // Normalizar solo cuando la magnitud lo garantiza (distance >= 1.0 asegurado arriba)
             double nx = dx / distance;
             double ny = dy / distance;
+
+            // Caso de solapamiento casi total: separación suave fija en lugar de corrección proporcional
+            if (distance < GameConfig.PLAYER_WIDTH * 0.5) {
+                double aMobility = threadMobility(a);
+                double bMobility = threadMobility(b);
+                double totalMobility = aMobility + bMobility;
+                double aShare = totalMobility == 0 ? 0.5 : aMobility / totalMobility;
+                double bShare = totalMobility == 0 ? 0.5 : bMobility / totalMobility;
+                // Impulso separador: -nx/-ny aleja a ambos jugadores entre sí
+                applyThreadVelocityImpulse(a, b, -nx, -ny, 1.5, aShare, bShare);
+                stabilizer.accept(a);
+                stabilizer.accept(b);
+                continue;
+            }
+
+            // Tensión solo activa cuando la distancia supera la zona de reposo
+            if (distance <= GameConfig.THREAD_REST_DISTANCE) continue;
+
             double stretchFromRest = distance - GameConfig.THREAD_REST_DISTANCE;
             double softStretch = Math.max(0, Math.min(distance, GameConfig.THREAD_MAX_DISTANCE) - GameConfig.THREAD_REST_DISTANCE);
             double hardStretch = Math.max(0, Math.min(distance, GameConfig.THREAD_HARD_LIMIT) - GameConfig.THREAD_MAX_DISTANCE);
@@ -121,8 +140,8 @@ public final class ThreadConstraintService {
             double aShare = totalMobility == 0 ? 0.5 : aMobility / totalMobility;
             double bShare = totalMobility == 0 ? 0.5 : bMobility / totalMobility;
 
-            if (stretchFromRest > 8 && threadSoundCooldownRemaining <= 0) {
-                threadSoundCooldownRemaining = THREAD_SOUND_COOLDOWN;
+            if (stretchFromRest > GameConfig.THREAD_STRETCH_SOUND_THRESHOLD && threadSoundCooldownRemaining <= 0) {
+                threadSoundCooldownRemaining = GameConfig.THREAD_SOUND_COOLDOWN_SECONDS;
                 eventPublisher.publish(EventNames.THREAD_STRETCHED, Map.of(
                     "playerA", a.getId(),
                     "playerB", b.getId(),
@@ -191,7 +210,7 @@ public final class ThreadConstraintService {
      * @return factor relativo de movilidad para repartir impulsos
      */
     private double threadMobility(Player player) {
-        return player.isGrounded() ? 0.35 : 0.65;
+        return player.isGrounded() ? GameConfig.THREAD_MOBILITY_GROUNDED : GameConfig.THREAD_MOBILITY_AIR;
     }
 
     /**
@@ -231,6 +250,14 @@ public final class ThreadConstraintService {
      *
      * <p>La corrección pasa por {@link ThreadCollisionHelper} para no atravesar
      * geometría sólida mientras el hilo reacomoda a ambos extremos.</p>
+     *
+     * @param a jugador del extremo A de la pareja tensada
+     * @param b jugador del extremo B de la pareja tensada
+     * @param nx componente X del vector unitario de A hacia B
+     * @param ny componente Y del vector unitario de A hacia B
+     * @param correction distancia total de corrección posicional a repartir
+     * @param aShare fracción de la corrección asignada al jugador A
+     * @param bShare fracción de la corrección asignada al jugador B
      */
     private void applyThreadPositionCorrection(Player a, Player b, double nx, double ny,
                                                double correction, double aShare, double bShare) {

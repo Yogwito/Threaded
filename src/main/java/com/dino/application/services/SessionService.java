@@ -104,6 +104,8 @@ public class SessionService {
 
     /**
      * Retorna una copia defensiva de las monedas para la UI.
+     *
+     * @return colección independiente de monedas lista para presentación
      */
     public synchronized List<CollectibleItem> getCoinsSnapshot() {
         return viewFactory.copyCollectibles(worldState.coins());
@@ -122,6 +124,9 @@ public class SessionService {
 
     /**
      * Asocia un jugador remoto a una dirección UDP y actualiza su último pulso.
+     *
+     * @param playerId identificador del jugador remoto
+     * @param address dirección UDP observada para ese jugador
      */
     public synchronized void registerPeerAddress(String playerId, InetSocketAddress address) {
         peerRegistry.register(playerId, address);
@@ -129,6 +134,8 @@ public class SessionService {
 
     /**
      * Lista únicamente peers remotos, excluyendo a la instancia local.
+     *
+     * @return direcciones UDP remotas actualmente registradas
      */
     public synchronized List<InetSocketAddress> getRemotePeerAddresses() {
         return peerRegistry.getRemoteAddresses(connectionState.getLocalPlayerId());
@@ -199,6 +206,8 @@ public class SessionService {
 
     /**
      * Retorna una copia defensiva de los jugadores.
+     *
+     * @return jugadores visibles del estado actual sin exponer el mapa mutable
      */
     public synchronized List<Player> getPlayersSnapshot() {
         return viewFactory.copyPlayers(worldState.players().values());
@@ -206,6 +215,8 @@ public class SessionService {
 
     /**
      * Retorna una copia defensiva de las plataformas del nivel.
+     *
+     * @return plataformas sólidas del nivel actual
      */
     public synchronized List<PlatformTile> getPlatformsSnapshot() {
         return viewFactory.copyPlatformTiles(worldState.platforms());
@@ -213,6 +224,8 @@ public class SessionService {
 
     /**
      * Retorna una copia de los puntos de aparición del nivel.
+     *
+     * @return puntos de spawn desligados del estado mutable
      */
     public synchronized List<double[]> getSpawnPointsSnapshot() {
         return viewFactory.copyPoints(worldState.spawnPoints());
@@ -220,6 +233,8 @@ public class SessionService {
 
     /**
      * Retorna una copia defensiva de las plataformas especiales.
+     *
+     * @return plataformas especiales del nivel actual
      */
     public synchronized List<PlatformTile> getSpecialPlatformsSnapshot() {
         return viewFactory.copyPlatformTiles(worldState.specialPlatforms());
@@ -227,6 +242,8 @@ public class SessionService {
 
     /**
      * Retorna una copia defensiva de los hazards.
+     *
+     * @return zonas peligrosas del nivel actual
      */
     public synchronized List<PlatformTile> getHazardsSnapshot() {
         return viewFactory.copyPlatformTiles(worldState.hazards());
@@ -234,6 +251,8 @@ public class SessionService {
 
     /**
      * Retorna una copia defensiva de los checkpoints.
+     *
+     * @return checkpoints visibles del nivel actual
      */
     public synchronized List<PlatformTile> getCheckpointsSnapshot() {
         return viewFactory.copyPlatformTiles(worldState.checkpoints());
@@ -241,6 +260,8 @@ public class SessionService {
 
     /**
      * Retorna una copia defensiva del botón actual.
+     *
+     * @return botón del nivel o {@code null} si no existe uno activo
      */
     public synchronized ButtonSwitch getButtonSwitchSnapshot() {
         return viewFactory.copyButton(worldState.buttonSwitch());
@@ -248,6 +269,8 @@ public class SessionService {
 
     /**
      * Retorna una copia defensiva de la puerta actual.
+     *
+     * @return puerta del nivel o {@code null} si no existe una activa
      */
     public synchronized Door getDoorSnapshot() {
         return viewFactory.copyDoor(worldState.door());
@@ -255,6 +278,8 @@ public class SessionService {
 
     /**
      * Retorna una copia defensiva de la salida actual.
+     *
+     * @return zona de salida o {@code null} si el nivel no define una
      */
     public synchronized ExitZone getExitZoneSnapshot() {
         return viewFactory.copyExitZone(worldState.exitZone());
@@ -262,6 +287,8 @@ public class SessionService {
 
     /**
      * Retorna una copia defensiva de los bloques empujables.
+     *
+     * @return bloques empujables listos para UI y render
      */
     public synchronized List<PushBlock> getPushBlocksSnapshot() {
         return viewFactory.copyPushBlocks(worldState.pushBlocks());
@@ -324,11 +351,16 @@ public class SessionService {
 
     /**
      * Retorna la fase macro actual de la sesión.
+     *
+     * @return fase actual del ciclo de vida local
      */
     public synchronized SessionPhase getPhase() { return stateMachine.currentPhase(); }
 
     /**
      * Indica si la sesión está en la fase consultada.
+     *
+     * @param phase fase a comparar con el estado actual
+     * @return {@code true} si la sesión se encuentra exactamente en esa fase
      */
     public synchronized boolean isInPhase(SessionPhase phase) { return stateMachine.isIn(phase); }
 

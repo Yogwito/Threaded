@@ -19,7 +19,11 @@ import javafx.scene.paint.Stop;
 import javafx.scene.shape.StrokeLineCap;
 import javafx.scene.text.Font;
 
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Random;
 
 /**
  * Renderer pixel art de la escena principal del juego.
@@ -29,7 +33,48 @@ import java.util.List;
  */
 public final class GameRenderer {
     private static final Font PLAYER_NAME_FONT = Font.font("Monospaced", 12);
-    private static final double VISIBILITY_MARGIN = 96.0;
+    /** Partícula dorada en coordenadas de mundo. */
+    private record CoinParticle(double x, double y, double vx, double vy, int framesLeft) {
+        CoinParticle step() {
+            return new CoinParticle(x + vx, y + vy, vx, vy + GameConfig.COIN_PARTICLE_GRAVITY, framesLeft - 1);
+        }
+    }
+
+    private static final Color COIN_PARTICLE_COLOR = Color.web("#FFD700");
+    private static final Random PARTICLE_RNG = new Random();
+    private final List<CoinParticle> coinParticles = new ArrayList<>();
+    private final Map<String, Boolean> coinActiveLastFrame = new HashMap<>();
+
+    private double renderOffsetX = 0;
+    private double renderOffsetY = 0;
+    private double renderScale = 1.0;
+    private long lastDeathMillis = -1;
+
+    /**
+     * Offset horizontal del viewport en píxeles de canvas (letterbox).
+     *
+     * @return desplazamiento horizontal aplicado al último frame renderizado
+     */
+    public double getRenderOffsetX() { return renderOffsetX; }
+
+    /**
+     * Offset vertical del viewport en píxeles de canvas (letterbox).
+     *
+     * @return desplazamiento vertical aplicado al último frame renderizado
+     */
+    public double getRenderOffsetY() { return renderOffsetY; }
+
+    /**
+     * Escala uniforme aplicada en el último frame (píxeles por unidad de mundo).
+     *
+     * @return factor de escala usado para convertir mundo a canvas
+     */
+    public double getRenderScale() { return renderScale; }
+
+    /** Registra el instante de muerte para activar el flash rojo en los siguientes frames. */
+    public void markDeath() {
+        lastDeathMillis = System.currentTimeMillis();
+    }
 
     /**
      * Dibuja un frame completo del juego sobre el canvas indicado.
@@ -42,60 +87,112 @@ public final class GameRenderer {
         double canvasHeight = canvas.getHeight();
         double scaleX = canvasWidth / state.viewportWidth();
         double scaleY = canvasHeight / state.viewportHeight();
+        double scale = Math.min(scaleX, scaleY);
+        renderScale = scale;
+        renderOffsetX = (canvasWidth - state.viewportWidth() * scale) / 2.0;
+        renderOffsetY = (canvasHeight - state.viewportHeight() * scale) / 2.0;
+        double vw = state.viewportWidth();
+        double vh = state.viewportHeight();
         int tileSize = Math.max(16, state.tileSize());
         PixelArtTheme.Palette palette = PixelArtTheme.paletteFor(state.background());
 
         GraphicsContext gc = canvas.getGraphicsContext2D();
-        drawBackground(gc, state, palette, canvasWidth, canvasHeight, scaleX, scaleY, tileSize);
 
-        drawGrid(gc, state, canvasWidth, canvasHeight, scaleX, scaleY, tileSize);
+        // Rellena las barras de letterbox con el color de fondo más lejano
+        gc.setFill(palette.backgroundFar());
+        gc.fillRect(0, 0, canvasWidth, canvasHeight);
+
+        // Aplica escala uniforme centrada: el viewport ocupa vw×vh unidades de mundo
+        gc.save();
+        gc.translate(renderOffsetX, renderOffsetY);
+        gc.scale(scale, scale);
+
+        drawBackground(gc, state, palette, vw, vh, 1.0, 1.0, tileSize);
+        drawGrid(gc, state, vw, vh, 1.0, 1.0, tileSize);
 
         gc.setStroke(PixelArtTheme.WORLD_BORDER);
         gc.setLineWidth(2);
-        gc.strokeRect(worldToScreenX(state, 0, scaleX), worldToScreenY(state, 0, scaleY),
-            GameConfig.LEVEL_WIDTH * scaleX, GameConfig.LEVEL_HEIGHT * scaleY);
+        gc.strokeRect(worldToScreenX(state, 0, 1.0), worldToScreenY(state, 0, 1.0),
+            GameConfig.LEVEL_WIDTH, GameConfig.LEVEL_HEIGHT);
 
         for (PlatformTile platform : state.platforms()) {
             if (!isVisible(state, platform.getX(), platform.getY(), platform.getWidth(), platform.getHeight())) continue;
-            drawPlatform(gc, state, platform, scaleX, scaleY, palette, false);
+            drawPlatform(gc, state, platform, 1.0, 1.0, palette, false);
         }
         for (PlatformTile platform : state.specialPlatforms()) {
             if (!isVisible(state, platform.getX(), platform.getY(), platform.getWidth(), platform.getHeight())) continue;
-            drawPlatform(gc, state, platform, scaleX, scaleY, palette, true);
+            drawPlatform(gc, state, platform, 1.0, 1.0, palette, true);
         }
         for (PlatformTile hazard : state.hazards()) {
             if (!isVisible(state, hazard.getX(), hazard.getY(), hazard.getWidth(), hazard.getHeight())) continue;
-            drawHazard(gc, state, hazard, scaleX, scaleY, palette);
+            drawHazard(gc, state, hazard, 1.0, 1.0, palette);
         }
         for (PlatformTile checkpoint : state.checkpoints()) {
             if (!isVisible(state, checkpoint.getX(), checkpoint.getY(), checkpoint.getWidth(), checkpoint.getHeight())) continue;
-            drawCheckpoint(gc, state, checkpoint, scaleX, scaleY, palette);
+            drawCheckpoint(gc, state, checkpoint, 1.0, 1.0, palette);
         }
         for (PushBlock block : state.pushBlocks()) {
             if (!isVisible(state, block.getX(), block.getY(), block.getWidth(), block.getHeight())) continue;
-            drawPushBlock(gc, state, block, scaleX, scaleY, palette);
+            drawPushBlock(gc, state, block, 1.0, 1.0, palette);
         }
         if (state.button() != null) {
-            drawButton(gc, state, state.button(), scaleX, scaleY, palette);
+            drawButton(gc, state, state.button(), 1.0, 1.0, palette);
         }
         if (state.door() != null) {
-            drawDoor(gc, state, state.door(), scaleX, scaleY, palette);
+            drawDoor(gc, state, state.door(), 1.0, 1.0, palette);
         }
         if (state.exitZone() != null) {
-            drawExit(gc, state, state.exitZone(), scaleX, scaleY, palette);
+            drawExit(gc, state, state.exitZone(), 1.0, 1.0, palette);
         }
         for (CollectibleItem coin : state.coins()) {
             if (coin.isActive() && isVisible(state, coin.getX(), coin.getY(), GameConfig.COIN_SIZE, GameConfig.COIN_SIZE)) {
-                drawCoin(gc, state, coin, scaleX, scaleY, palette);
+                drawCoin(gc, state, coin, 1.0, 1.0, palette);
             }
         }
 
-        drawThread(gc, state, state.players(), scaleX, scaleY);
+        // Detectar monedas recién recogidas y spawnear partículas en su posición
+        for (CollectibleItem coin : state.coins()) {
+            boolean nowActive = coin.isActive();
+            if (Boolean.TRUE.equals(coinActiveLastFrame.get(coin.getId())) && !nowActive) {
+                double cx = coin.getX() + GameConfig.COIN_SIZE / 2.0;
+                double cy = coin.getY() + GameConfig.COIN_SIZE / 2.0;
+                for (int i = 0; i < 5; i++) {
+                    double pvx = PARTICLE_RNG.nextDouble() * 2 * GameConfig.COIN_PARTICLE_VX_RANGE - GameConfig.COIN_PARTICLE_VX_RANGE;
+                    double pvy = -(PARTICLE_RNG.nextDouble() * GameConfig.COIN_PARTICLE_VY_RANGE + GameConfig.COIN_PARTICLE_VY_MIN);
+                    coinParticles.add(new CoinParticle(cx, cy, pvx, pvy, GameConfig.COIN_PARTICLE_FRAMES));
+                }
+            }
+            coinActiveLastFrame.put(coin.getId(), nowActive);
+        }
+
+        drawThread(gc, state, state.players(), 1.0, 1.0);
         int playerIndex = 0;
         for (Player player : state.players()) {
             if (!player.isConnected()) continue;
             if (!isVisible(state, player.getX(), player.getY(), player.getWidth(), player.getHeight())) continue;
-            drawPlayer(gc, state, player, state.localPlayer(), playerIndex++, scaleX, scaleY, palette);
+            drawPlayer(gc, state, player, state.localPlayer(), playerIndex++, 1.0, 1.0, palette);
+        }
+
+        // Actualizar y dibujar partículas de moneda (espacio-mundo, dentro del transform)
+        coinParticles.replaceAll(CoinParticle::step);
+        coinParticles.removeIf(p -> p.framesLeft() <= 0);
+        for (CoinParticle p : coinParticles) {
+            double alpha = p.framesLeft() / (double) GameConfig.COIN_PARTICLE_FRAMES;
+            double px = worldToScreenX(state, p.x(), 1.0);
+            double py = worldToScreenY(state, p.y(), 1.0);
+            gc.setFill(COIN_PARTICLE_COLOR.deriveColor(0, 1, 1, alpha));
+            gc.fillOval(px - 2, py - 2, 4, 4);
+        }
+
+        gc.restore();
+
+        if (lastDeathMillis > 0) {
+            long elapsed = System.currentTimeMillis() - lastDeathMillis;
+            if (elapsed < GameConfig.DEATH_FLASH_DURATION_MS) {
+                double alpha = (1.0 - elapsed / (double) GameConfig.DEATH_FLASH_DURATION_MS) * GameConfig.DEATH_FLASH_MAX_ALPHA;
+                gc.setFill(Color.rgb(220, 30, 30, alpha));
+                gc.fillRect(0, 0, canvasWidth, canvasHeight);
+            }
         }
     }
 
@@ -146,7 +243,9 @@ public final class GameRenderer {
             double lineWidth;
             if (dist >= GameConfig.THREAD_CRITICAL_DISTANCE) {
                 threadColor = Color.web("#e05555");
-                lineWidth = 3.0;
+                // Pulso: lineWidth oscila entre 2.5 y 4.0 al ritmo de ~7 Hz
+                double pulse = Math.sin(state.visualTimeSeconds() * 14.0) * 0.75;
+                lineWidth = 3.0 + pulse;
             } else if (dist >= GameConfig.THREAD_TENSE_DISTANCE) {
                 threadColor = Color.web("#e0a030");
                 lineWidth = 2.5;
@@ -830,10 +929,10 @@ public final class GameRenderer {
      * @return {@code true} si conviene dibujarlo en este frame
      */
     private boolean isVisible(GameRenderState state, double x, double y, double width, double height) {
-        double minX = state.cameraX() - VISIBILITY_MARGIN;
-        double maxX = state.cameraX() + state.viewportWidth() + VISIBILITY_MARGIN;
-        double minY = state.cameraY() - VISIBILITY_MARGIN;
-        double maxY = state.cameraY() + state.viewportHeight() + VISIBILITY_MARGIN;
+        double minX = state.cameraX() - GameConfig.RENDERER_VISIBILITY_MARGIN;
+        double maxX = state.cameraX() + state.viewportWidth() + GameConfig.RENDERER_VISIBILITY_MARGIN;
+        double minY = state.cameraY() - GameConfig.RENDERER_VISIBILITY_MARGIN;
+        double maxY = state.cameraY() + state.viewportHeight() + GameConfig.RENDERER_VISIBILITY_MARGIN;
         return x + width >= minX && x <= maxX && y + height >= minY && y <= maxY;
     }
 }

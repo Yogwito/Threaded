@@ -68,6 +68,25 @@ public final class LobbyScreenFlow {
     }
 
     /**
+     * Retorna la IP local del socket activo, o cadena vacía si aún no está configurada.
+     *
+     * @return IP local como cadena legible
+     */
+    public String localIp() {
+        String ip = sessionService.getLocalIp();
+        return ip != null ? ip : "";
+    }
+
+    /**
+     * Retorna el puerto UDP local del socket activo.
+     *
+     * @return puerto local
+     */
+    public int localPort() {
+        return sessionService.getLocalPort();
+    }
+
+    /**
      * Retorna la lista visible de jugadores del lobby.
      *
      * @return nombres y estado listos para {@code ListView}
@@ -139,12 +158,13 @@ public final class LobbyScreenFlow {
     }
 
     /**
-     * Marca al jugador local como listo y propaga el cambio por UDP.
+     * Actualiza el estado READY del jugador local y propaga el cambio por UDP.
      *
+     * @param ready nuevo estado listo del jugador local
      * @throws Exception si falla el envío del mensaje
      */
-    public void markLocalReady() throws Exception {
-        requireCoordinator().markLocalReady();
+    public void setLocalReady(boolean ready) throws Exception {
+        requireCoordinator().setLocalReady(ready);
     }
 
     /**
@@ -179,14 +199,34 @@ public final class LobbyScreenFlow {
     }
 
     /**
+     * Indica si el jugador local ya marcó READY en el lobby actual.
+     *
+     * @return {@code true} cuando el jugador local está listo para iniciar
+     */
+    public boolean isLocalPlayerReady() {
+        String localId = sessionService.getLocalPlayerId();
+        if (localId == null) return false;
+        for (Player player : sessionService.getPlayersSnapshot()) {
+            if (localId.equals(player.getId())) return player.isReady();
+        }
+        return false;
+    }
+
+    /**
      * Retorna el mensaje de estado asociado a dejar listo al jugador local.
      *
      * @return texto breve para la etiqueta de estado
      */
     public String readyStatusMessage() {
-        return sessionService.isHost()
-            ? "Host listo. Esperando más jugadores..."
-            : "Listo! Esperando al host...";
+        boolean ready = isLocalPlayerReady();
+        if (sessionService.isHost()) {
+            return ready
+                ? "Host listo. Esperando más jugadores..."
+                : "Host no listo.";
+        }
+        return ready
+            ? "Listo! Esperando al host..."
+            : "Listo cancelado.";
     }
 
     /**

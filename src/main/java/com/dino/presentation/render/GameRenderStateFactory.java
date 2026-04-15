@@ -100,6 +100,10 @@ public final class GameRenderStateFactory {
 
     /**
      * Busca al jugador local dentro de la lista a renderizar.
+     *
+     * @param players jugadores presentes en el snapshot visual
+     * @param localPlayerId identificador del jugador controlado localmente
+     * @return jugador local correspondiente o {@code null} si no aparece en la lista
      */
     public Player findLocalPlayer(List<Player> players, String localPlayerId) {
         if (localPlayerId == null) {

@@ -59,7 +59,7 @@ public class HostMatchService {
      * Inicializa la campaña desde el primer nivel y reinicia contadores.
      */
     public void initWorld() {
-        matchState.beginCampaign(levelCatalog.countAvailableLevels());
+        matchState.beginCampaign(Math.min(6, levelCatalog.countAvailableLevels()));
         gameOver = false;
         playerPhysicsService.resetState();
         threadConstraintService.resetState();
@@ -86,6 +86,17 @@ public class HostMatchService {
      */
     public void handleJump(String playerId) {
         playerPhysicsService.handleJump(playerId);
+    }
+
+    /**
+     * Fuerza el reinicio de la sala actual desde una acción externa (p.ej. tecla R).
+     *
+     * <p>Equivale al reseteo que ocurre cuando un jugador cae al vacío: restaura
+     * posiciones, cajas, monedas y puerta, y sincroniza los inputs activos.</p>
+     */
+    public void resetCurrentRoom() {
+        levelFlowService.triggerReset("Reinicio manual");
+        playerPhysicsService.syncInputsToPlayers(new ArrayList<>(worldState.players().values()));
     }
 
     /**

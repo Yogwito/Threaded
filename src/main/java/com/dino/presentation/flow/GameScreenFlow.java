@@ -110,6 +110,9 @@ public final class GameScreenFlow {
             ))));
         group.add(eventChannel.subscribe(EventNames.LEVEL_ADVANCED, ignored ->
             feedbackConsumer.accept(new GameplayFeedback("Nivel completado", "#80ed99"))));
+        group.add(eventChannel.subscribe(EventNames.PLAYER_REACHED_EXIT, payload ->
+            emitLocalPlayerFeedback(payload, "playerId",
+                buildExitFeedback(payload), feedbackConsumer)));
         return group::clear;
     }
 
@@ -220,10 +223,35 @@ public final class GameScreenFlow {
     }
 
     /**
+     * Fuerza el reinicio de la sala actual en el host autoritativo.
+     *
+     * <p>Solo tiene efecto cuando la instancia local es el host. Los clientes
+     * recibirán el estado reseteado en el siguiente snapshot.</p>
+     */
+    public void resetCurrentRoom() {
+        requireCoordinator().resetCurrentRoom();
+    }
+
+    /**
      * Cierra la sesión actual y reconstruye el runtime desde el menú.
      */
     public void resetToStartMenu() {
         resetToStartMenu.run();
+    }
+
+    /**
+     * Construye el feedback de llegada a la salida según el orden de llegada.
+     *
+     * @param payload payload del evento {@code PLAYER_REACHED_EXIT}
+     * @return feedback con texto y color adecuados al puesto obtenido
+     */
+    private GameplayFeedback buildExitFeedback(Map<String, Object> payload) {
+        int order = payload.get("finishOrder") instanceof Number n ? n.intValue() : 1;
+        return switch (order) {
+            case 1 -> new GameplayFeedback("1er lugar  +100", "#FFD700");
+            case 2 -> new GameplayFeedback("2do lugar  +70",  "#C0C0C0");
+            default -> new GameplayFeedback("Llegaste  +50",   "#80ed99");
+        };
     }
 
     private void emitLocalPlayerFeedback(Map<String, Object> payload,

@@ -25,6 +25,16 @@ public final class GameRules {
 
     /**
      * Evalúa intersección AABB entre dos rectángulos.
+     *
+     * @param ax coordenada X del primer rectángulo
+     * @param ay coordenada Y del primer rectángulo
+     * @param aw ancho del primer rectángulo
+     * @param ah alto del primer rectángulo
+     * @param bx coordenada X del segundo rectángulo
+     * @param by coordenada Y del segundo rectángulo
+     * @param bw ancho del segundo rectángulo
+     * @param bh alto del segundo rectángulo
+     * @return {@code true} si ambos rectángulos se superponen
      */
     public static boolean intersects(double ax, double ay, double aw, double ah,
                                      double bx, double by, double bw, double bh) {
@@ -33,6 +43,10 @@ public final class GameRules {
 
     /**
      * Determina si el jugador está colisionando con una plataforma.
+     *
+     * @param player jugador a evaluar
+     * @param platform plataforma sólida candidata
+     * @return {@code true} si ambos volúmenes se intersectan
      */
     public static boolean intersects(Player player, PlatformTile platform) {
         return intersects(player.getX(), player.getY(), player.getWidth(), player.getHeight(),
@@ -41,6 +55,10 @@ public final class GameRules {
 
     /**
      * Determina si el jugador colisiona con una puerta cerrada.
+     *
+     * @param player jugador a evaluar
+     * @param door puerta candidata
+     * @return {@code true} si la puerta está cerrada y ambos volúmenes se cruzan
      */
     public static boolean intersects(Player player, Door door) {
         if (door == null || door.isOpen()) return false;
@@ -50,6 +68,10 @@ public final class GameRules {
 
     /**
      * Determina si dos jugadores se superponen.
+     *
+     * @param a primer jugador
+     * @param b segundo jugador
+     * @return {@code true} si sus AABB actuales se superponen
      */
     public static boolean intersects(Player a, Player b) {
         if (a == null || b == null || a == b) return false;
@@ -59,6 +81,10 @@ public final class GameRules {
 
     /**
      * Determina si un jugador empuja o colisiona con un bloque móvil.
+     *
+     * @param player jugador a evaluar
+     * @param block bloque empujable candidato
+     * @return {@code true} si el jugador intersecta el bloque
      */
     public static boolean intersects(Player player, PushBlock block) {
         if (player == null || block == null) return false;
@@ -69,6 +95,15 @@ public final class GameRules {
     /**
      * Determina si un rectángulo arbitrario intersecta cualquier sólido
      * relevante para el hilo.
+     *
+     * @param x coordenada X del rectángulo evaluado
+     * @param y coordenada Y del rectángulo evaluado
+     * @param width ancho del rectángulo evaluado
+     * @param height alto del rectángulo evaluado
+     * @param platforms plataformas sólidas del nivel
+     * @param door puerta del nivel
+     * @param pushBlocks bloques empujables presentes
+     * @return {@code true} si el rectángulo toca algún sólido relevante
      */
     public static boolean intersectsAnySolid(double x, double y, double width, double height,
                                              Collection<PlatformTile> platforms,
@@ -102,6 +137,12 @@ public final class GameRules {
 
     /**
      * Determina si un jugador intersecta cualquier sólido relevante para el hilo.
+     *
+     * @param player jugador a evaluar
+     * @param platforms plataformas sólidas del nivel
+     * @param door puerta del nivel
+     * @param pushBlocks bloques empujables presentes
+     * @return {@code true} si el jugador colisiona con algún sólido
      */
     public static boolean intersectsAnySolid(Player player,
                                              Collection<PlatformTile> platforms,
@@ -114,6 +155,10 @@ public final class GameRules {
 
     /**
      * Determina si un bloque móvil está colisionando con una plataforma.
+     *
+     * @param block bloque empujable a evaluar
+     * @param platform plataforma candidata
+     * @return {@code true} si ambos volúmenes se superponen
      */
     public static boolean intersects(PushBlock block, PlatformTile platform) {
         if (block == null || platform == null) return false;
@@ -123,6 +168,10 @@ public final class GameRules {
 
     /**
      * Determina si un bloque móvil colisiona con una puerta cerrada.
+     *
+     * @param block bloque empujable a evaluar
+     * @param door puerta candidata
+     * @return {@code true} si la puerta está cerrada y ambos volúmenes se cruzan
      */
     public static boolean intersects(PushBlock block, Door door) {
         if (block == null || door == null || door.isOpen()) return false;
@@ -132,6 +181,10 @@ public final class GameRules {
 
     /**
      * Verifica si un jugador está presionando el botón del nivel.
+     *
+     * @param player jugador a evaluar
+     * @param button botón del nivel
+     * @return {@code true} si el jugador vivo ocupa el área del botón
      */
     public static boolean isPressingButton(Player player, ButtonSwitch button) {
         if (player == null || button == null || !player.isAlive()) return false;
@@ -141,6 +194,10 @@ public final class GameRules {
 
     /**
      * Verifica si un jugador se encuentra dentro de la salida.
+     *
+     * @param player jugador a evaluar
+     * @param exitZone zona de salida del nivel
+     * @return {@code true} si el jugador vivo está dentro de la meta
      */
     public static boolean isInsideExit(Player player, ExitZone exitZone) {
         if (player == null || exitZone == null || !player.isAlive()) return false;
@@ -150,6 +207,9 @@ public final class GameRules {
 
     /**
      * Confirma si todos los jugadores conectados ya están dentro de la meta.
+     *
+     * @param players jugadores a comprobar
+     * @return {@code true} si existe al menos un jugador conectado y todos están en la salida
      */
     public static boolean allConnectedPlayersAtExit(Collection<Player> players) {
         boolean hasConnectedPlayers = false;
@@ -167,6 +227,9 @@ public final class GameRules {
      * <p>Cuando la colección fuente proviene de {@code SessionService.players},
      * el resultado corresponde al orden de unión porque el mapa subyacente es
      * un {@code LinkedHashMap}.</p>
+     *
+     * @param players colección fuente de jugadores
+     * @return jugadores conectados y vivos en orden de hilo
      */
     public static List<Player> getConnectedPlayersInThreadOrder(Collection<Player> players) {
         List<Player> ordered = new ArrayList<>();
@@ -179,6 +242,10 @@ public final class GameRules {
 
     /**
      * Retorna los vecinos adyacentes de un jugador dentro de la cadena del hilo.
+     *
+     * @param player jugador cuyo vecindario se consulta
+     * @param players conjunto total de jugadores conectados
+     * @return vecinos inmediatos dentro del orden del hilo
      */
     public static List<Player> getThreadNeighbors(Player player, Collection<Player> players) {
         if (player == null || player.getId() == null) return List.of();
@@ -202,6 +269,10 @@ public final class GameRules {
     /**
      * Indica si un jugador excede el límite duro del hilo respecto a sus vecinos
      * adyacentes en la cadena fija.
+     *
+     * @param movingPlayer jugador que se está desplazando
+     * @param players colección total de jugadores relevantes
+     * @return {@code true} si la distancia a un vecino supera el límite duro
      */
     public static boolean violatesAdjacentThreadHardLimit(Player movingPlayer, Collection<Player> players) {
         for (Player neighbor : getThreadNeighbors(movingPlayer, players)) {
@@ -214,6 +285,10 @@ public final class GameRules {
 
     /**
      * Calcula la distancia entre los centros de dos jugadores.
+     *
+     * @param a primer jugador
+     * @param b segundo jugador
+     * @return distancia euclídea entre sus centros
      */
     public static double distance(Player a, Player b) {
         double dx = a.getCenterX() - b.getCenterX();
@@ -240,6 +315,16 @@ public final class GameRules {
 
     /**
      * Verifica si un segmento 2D intersecta un rectángulo axis-aligned.
+     *
+     * @param x1 coordenada X inicial del segmento
+     * @param y1 coordenada Y inicial del segmento
+     * @param x2 coordenada X final del segmento
+     * @param y2 coordenada Y final del segmento
+     * @param rx coordenada X del rectángulo
+     * @param ry coordenada Y del rectángulo
+     * @param rw ancho del rectángulo
+     * @param rh alto del rectángulo
+     * @return {@code true} si el segmento toca el rectángulo expandido
      */
     public static boolean segmentIntersectsAabb(double x1, double y1, double x2, double y2,
                                                 double rx, double ry, double rw, double rh) {
@@ -278,6 +363,14 @@ public final class GameRules {
     /**
      * Determina si existe un sólido entre dos jugadores a lo largo del segmento
      * que une sus centros.
+     *
+     * @param a primer jugador
+     * @param b segundo jugador
+     * @param platforms plataformas sólidas del nivel
+     * @param door puerta del nivel
+     * @param pushBlocks bloques empujables presentes
+     * @param margin expansión aplicada al AABB de cada sólido
+     * @return {@code true} si el hilo entre ambos jugadores queda obstruido
      */
     public static boolean isThreadObstructed(Player a, Player b,
                                              Collection<PlatformTile> platforms,

@@ -130,6 +130,44 @@ Después de la metadata, cada fila representa tiles separados por comas. La trad
 
 El proyecto está separado por capas para evitar que UI, red, sesión y reglas queden mezcladas.
 
+### Diagrama de capas
+
+```mermaid
+graph TD
+    subgraph PRES["Presentación"]
+        CTR["controllers\n(StartMenuController · GameController · LobbyController)"]
+        FLW["flow\n(StartMenuFlow · LobbyScreenFlow · GameScreenFlow)"]
+        RND["render\n(GameRenderer · LobbyPreviewRenderer)"]
+        NAV["navigation — SceneNavigator"]
+    end
+
+    subgraph APP["Aplicación"]
+        HMS["HostMatchService"]
+        PPS["PlayerPhysicsService"]
+        TCS["ThreadConstraintService"]
+        LFS["LevelFlowService"]
+        EB["EventBus"]
+        SS["SessionService"]
+    end
+
+    subgraph DOM["Dominio"]
+        GR["GameRules"]
+        ENT["entities\n(Player · PlatformTile · PushBlock · ...)"]
+    end
+
+    subgraph INF["Infraestructura"]
+        UDP["UdpPeer"]
+        SER["MessageSerializer"]
+        AUD["SoundManager"]
+    end
+
+    PRES --> APP
+    APP --> DOM
+    INF --> APP
+```
+
+Las flechas indican dirección de dependencia: la presentación conoce la capa de aplicación, pero no viceversa. La infraestructura también depende de la aplicación (publica eventos en el bus, recibe llamadas del coordinador). El dominio no depende de ninguna otra capa.
+
 ### Bootstrap y runtime
 
 - `com.dino.MainApp`: punto de entrada JavaFX

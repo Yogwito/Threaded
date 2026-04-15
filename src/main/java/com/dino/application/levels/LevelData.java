@@ -37,6 +37,7 @@ public class LevelData {
      * @param hazards zonas peligrosas
      * @param checkpoints plataformas de checkpoint
      * @param goals zonas meta del nivel
+     * @param coins monedas coleccionables disponibles en el nivel
      */
     public LevelData(String name,
                      String background,

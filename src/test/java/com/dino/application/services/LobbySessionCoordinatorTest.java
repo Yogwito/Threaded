@@ -13,6 +13,8 @@ import java.net.InetSocketAddress;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Pruebas unitarias para {@link LobbySessionCoordinator}.
@@ -93,5 +95,78 @@ class LobbySessionCoordinatorTest {
 
         assertEquals(LobbySignal.NONE, coordinator.pollNetworkTick());
         assertEquals(1, events.count(EventNames.GAME_STARTED));
+    }
+
+    @Test
+    void clientSendsExplicitReadyStateAndUpdatesLocalSnapshot() throws Exception {
+        RecordingEventPublisher events = new RecordingEventPublisher();
+        SessionService session = new SessionService(events);
+        SessionLifecycleService lifecycle = new SessionLifecycleService(session);
+        FakeNetworkPeer peer = new FakeNetworkPeer();
+        MessageSerializer serializer = new MessageSerializer();
+
+        lifecycle.configureAsClient("client-1", "Client", "127.0.0.1", 7001, "127.0.0.1", 7000);
+        Player localPlayer = new Player("client-1", "Client", "blue");
+        localPlayer.setReady(true);
+        session.addPlayer(localPlayer);
+
+        LobbySessionCoordinator coordinator = new LobbySessionCoordinator(
+            session,
+            lifecycle,
+            events,
+            peer,
+            serializer,
+            new ProtocolMessageValidator(),
+            () -> null
+        );
+
+        coordinator.setLocalReady(false);
+
+        assertFalse(session.getPlayersSnapshot().getFirst().isReady());
+        assertEquals(1, peer.getSentMessages().size());
+        assertEquals(false, peer.getSentMessages().getFirst().payload().get("ready"));
+        assertEquals(1, events.count(EventNames.PLAYER_READY));
+    }
+
+    @Test
+    void hostAppliesExplicitReadyStateFromClientMessage() {
+        RecordingEventPublisher events = new RecordingEventPublisher();
+        SessionService session = new SessionService(events);
+        SessionLifecycleService lifecycle = new SessionLifecycleService(session);
+        FakeNetworkPeer peer = new FakeNetworkPeer();
+        MessageSerializer serializer = new MessageSerializer();
+
+        lifecycle.configureAsHost("host-1", "Host", "127.0.0.1", 7000, 2);
+        session.addPlayer(new Player("host-1", "Host", "red"));
+        Player remotePlayer = new Player("remote-1", "Remote", "blue");
+        remotePlayer.setReady(true);
+        session.addPlayer(remotePlayer);
+
+        LobbySessionCoordinator coordinator = new LobbySessionCoordinator(
+            session,
+            lifecycle,
+            events,
+            peer,
+            serializer,
+            new ProtocolMessageValidator(),
+            () -> null
+        );
+
+        peer.queueIncoming(
+            serializer.build(MessageType.READY, "playerId", "remote-1", "ready", false),
+            new InetSocketAddress("127.0.0.1", 7001)
+        );
+
+        assertEquals(LobbySignal.NONE, coordinator.pollNetworkTick());
+        assertTrue(session.getPlayersSnapshot().stream()
+            .filter(player -> "remote-1".equals(player.getId()))
+            .findFirst()
+            .isPresent());
+        assertFalse(session.getPlayersSnapshot().stream()
+            .filter(player -> "remote-1".equals(player.getId()))
+            .findFirst()
+            .orElseThrow()
+            .isReady());
+        assertEquals(1, events.count(EventNames.PLAYER_READY));
     }
 }

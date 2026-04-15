@@ -22,6 +22,13 @@ public final class ThreadCollisionHelper {
     /**
      * Intenta mover al jugador por componente usando pasos cortos; si una
      * componente colisiona, la recorta cancelando el resto de ese eje.
+     *
+     * @param player jugador cuya posición se corrige
+     * @param dx delta horizontal propuesto
+     * @param dy delta vertical propuesto
+     * @param platforms plataformas sólidas contra las que se valida
+     * @param door puerta del nivel a considerar como sólido si está cerrada
+     * @param pushBlocks bloques empujables relevantes para la colisión
      */
     public static void applyValidatedDelta(Player player,
                                            double dx,

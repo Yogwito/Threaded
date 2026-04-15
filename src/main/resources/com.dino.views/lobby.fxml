@@ -43,8 +43,9 @@
                 <Label text="Los jugadores aparecen aqui sin cuerda para confirmar colores, nombres y estado antes de empezar."
                        wrapText="true"
                        style="-fx-text-fill: #91a5bd; -fx-font-size: 12px; -fx-font-family: 'Monospaced';"/>
-                <StackPane style="-fx-background-color: linear-gradient(to bottom, #0e151f, #0b1118); -fx-background-radius: 20; -fx-border-radius: 20; -fx-border-color: #2a3d52; -fx-border-width: 1.5; -fx-padding: 10;">
-                    <Canvas fx:id="lobbyPreviewCanvas" width="490" height="266"/>
+                <StackPane fx:id="lobbyCanvasPane" maxWidth="Infinity" maxHeight="Infinity"
+                           style="-fx-background-color: linear-gradient(to bottom, #0e151f, #0b1118); -fx-background-radius: 20; -fx-border-radius: 20; -fx-border-color: #2a3d52; -fx-border-width: 1.5; -fx-padding: 10;">
+                    <Canvas fx:id="lobbyPreviewCanvas" width="490" height="1"/>
                 </StackPane>
             </VBox>
 
@@ -104,6 +105,12 @@
                             visible="false"
                             style="-fx-background-color: linear-gradient(to bottom, #a7f0b6, #7cdc92); -fx-text-fill: #112015; -fx-font-weight: bold; -fx-font-size: 14px; -fx-font-family: 'Monospaced'; -fx-padding: 12 26; -fx-background-radius: 14; -fx-cursor: hand;"/>
                 </HBox>
+
+                <Label fx:id="hostInfoLabel"
+                       text=""
+                       visible="false"
+                       wrapText="true"
+                       style="-fx-text-fill: #8fe4ff; -fx-font-size: 11px; -fx-font-family: 'Monospaced'; -fx-background-color: rgba(10,25,40,0.82); -fx-background-radius: 10; -fx-border-color: rgba(80,160,200,0.35); -fx-border-width: 1; -fx-border-radius: 10; -fx-padding: 7 10 7 10;"/>
 
                 <Label fx:id="statusLabel"
                        text=""

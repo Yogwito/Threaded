@@ -37,6 +37,7 @@ public final class LobbySessionCoordinator {
      * Crea un coordinador ligado al runtime actual.
      *
      * @param sessionService estado compartido de lobby y partida
+     * @param lifecycleService fachada del ciclo de vida de la sesión
      * @param eventPublisher publicador de eventos internos
      * @param networkPeer transporte UDP ya enlazado
      * @param serializer constructor de mensajes del protocolo
@@ -60,25 +61,37 @@ public final class LobbySessionCoordinator {
     }
 
     /**
-     * Marca al jugador local como listo y lo propaga por red según su rol.
+     * Actualiza el estado READY del jugador local y lo propaga por red según su rol.
      *
-     * @throws Exception si el cliente no puede enviar el mensaje `READY`
+     * @param ready nuevo estado listo del jugador local
+     * @throws Exception si el cliente no puede enviar el mensaje {@code READY}
      */
-    public void markLocalReady() throws Exception {
+    public void setLocalReady(boolean ready) throws Exception {
         if (!lifecycleService.isInPhase(SessionPhase.LOBBY)) {
             return;
         }
 
+        String localPlayerId = sessionService.getLocalPlayerId();
         if (sessionService.isHost()) {
-            sessionService.markPlayerReady(sessionService.getLocalPlayerId(), true);
-            eventPublisher.publish(EventNames.PLAYER_READY, Map.of("playerId", sessionService.getLocalPlayerId()));
+            sessionService.markPlayerReady(localPlayerId, ready);
+            eventPublisher.publish(EventNames.PLAYER_READY, Map.of(
+                "playerId", localPlayerId,
+                "ready", ready
+            ));
             broadcastLobbySnapshot();
             return;
         }
 
+        sessionService.markPlayerReady(localPlayerId, ready);
+        eventPublisher.publish(EventNames.PLAYER_READY, Map.of(
+            "playerId", localPlayerId,
+            "ready", ready
+        ));
+
         Map<String, Object> msg = serializer.build(
             MessageType.READY,
-            "playerId", sessionService.getLocalPlayerId()
+            "playerId", localPlayerId,
+            "ready", ready
         );
         networkPeer.send(msg, InetAddress.getByName(sessionService.getHostIp()), sessionService.getHostPort());
     }
@@ -208,8 +221,12 @@ public final class LobbySessionCoordinator {
 
         if (type == MessageType.READY) {
             String playerId = (String) msg.get("playerId");
-            sessionService.markPlayerReady(playerId, true);
-            eventPublisher.publish(EventNames.PLAYER_READY, msg);
+            boolean ready = !(msg.get("ready") instanceof Boolean readyFlag) || readyFlag;
+            sessionService.markPlayerReady(playerId, ready);
+            eventPublisher.publish(EventNames.PLAYER_READY, Map.of(
+                "playerId", playerId,
+                "ready", ready
+            ));
             broadcastLobbySnapshot();
             return;
         }

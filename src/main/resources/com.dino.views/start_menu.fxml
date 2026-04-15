@@ -10,177 +10,232 @@
 <?import javafx.scene.layout.ColumnConstraints?>
 <?import javafx.scene.layout.GridPane?>
 <?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
 <?import javafx.scene.layout.VBox?>
 
 <BorderPane xmlns="http://javafx.com/javafx/21"
             xmlns:fx="http://javafx.com/fxml/1"
             fx:controller="com.dino.presentation.controllers.StartMenuController"
-            style="-fx-background-color: linear-gradient(to bottom, #09101b, #121b2b 36%, #162132 100%);">
+            stylesheets="@start_menu.css"
+            style="-fx-background-color: #0a1520;">
     <center>
-        <HBox spacing="28" alignment="CENTER" style="-fx-padding: 40 48;">
-            <VBox spacing="14" prefWidth="450"
-                  style="-fx-background-color: rgba(14,21,32,0.95); -fx-background-radius: 28; -fx-border-radius: 28; -fx-border-color: #36506a; -fx-border-width: 2; -fx-padding: 28;">
-                <Label text="THREADED"
-                       style="-fx-font-size: 52px; -fx-font-weight: bold; -fx-text-fill: #eef4fb; -fx-font-family: 'Monospaced';"/>
-                <Label text="Cooperativo 2D por salas"
-                       style="-fx-font-size: 18px; -fx-text-fill: #88cdfd; -fx-font-family: 'Monospaced';"/>
-                <Label text="Muervanse juntos, tensen la cuerda con cuidado y lleguen en equipo a cada salida."
-                       wrapText="true"
-                       style="-fx-font-size: 13px; -fx-text-fill: #a5b5c8; -fx-font-family: 'Monospaced';"/>
-                <Label text="UDP local | host autoritativo | campana cooperativa"
-                       style="-fx-font-size: 12px; -fx-text-fill: #8fe4ff; -fx-font-family: 'Monospaced'; -fx-background-color: rgba(17,41,63,0.9); -fx-background-radius: 999; -fx-padding: 6 12 6 12;"/>
+        <!-- Contenedor principal centrado verticalmente -->
+        <HBox spacing="0" alignment="CENTER" style="-fx-padding: 36 52;">
 
-                <VBox spacing="12" prefWidth="394"
-                      style="-fx-background-color: #121924; -fx-background-radius: 20; -fx-border-radius: 20; -fx-border-color: rgba(57,79,104,0.9); -fx-border-width: 1.2; -fx-padding: 18 20;">
-                    <Label text="Cómo se juega"
-                           style="-fx-text-fill: #eef4fb; -fx-font-size: 15px; -fx-font-weight: bold; -fx-font-family: 'Monospaced';"/>
+            <!-- ══ Panel izquierdo: identidad + instrucciones ══ -->
+            <VBox spacing="18" prefWidth="440"
+                  style="-fx-background-color: #0f1e2e;
+                         -fx-background-radius: 22 0 0 22;
+                         -fx-border-radius: 22 0 0 22;
+                         -fx-border-color: rgba(0,229,255,0.15);
+                         -fx-border-width: 1.5 0 1.5 1.5;
+                         -fx-padding: 30 22 30 28;">
+
+                <!-- Título principal -->
+                <VBox spacing="5">
+                    <Label text="THREADED"
+                           style="-fx-font-size: 62px;
+                                  -fx-font-weight: bold;
+                                  -fx-text-fill: #00e5ff;
+                                  -fx-font-family: 'Monospaced';
+                                  -fx-effect: dropshadow(gaussian, rgba(0,229,255,0.30), 22, 0, 0, 2);"/>
+                    <Label text="co-op  ·  UDP  ·  host autoritativo"
+                           style="-fx-font-size: 11.5px;
+                                  -fx-text-fill: #c8e8f0;
+                                  -fx-font-family: 'Monospaced';
+                                  -fx-opacity: 0.82;
+                                  -fx-padding: 0 0 0 3;"/>
+                </VBox>
+
+                <Label text="Muévanse juntos, tensen la cuerda con cuidado y lleguen en equipo a cada salida."
+                       wrapText="true"
+                       style="-fx-font-size: 12px;
+                              -fx-text-fill: #E8F4F8;
+                              -fx-font-family: 'Monospaced';
+                              -fx-line-spacing: 2;"/>
+
+                <!-- Cómo se juega -->
+                <VBox spacing="9"
+                      style="-fx-background-color: rgba(8,18,30,0.95);
+                             -fx-background-radius: 14;
+                             -fx-border-radius: 14;
+                             -fx-border-color: rgba(0,229,255,0.18);
+                             -fx-border-width: 1;
+                             -fx-padding: 14 16;">
+                    <Label text="// CÓMO SE JUEGA"
+                           style="-fx-text-fill: #00e5ff;
+                                  -fx-font-size: 9.5px;
+                                  -fx-font-weight: bold;
+                                  -fx-font-family: 'Monospaced';
+                                  -fx-padding: 0 0 3 0;"/>
                     <HBox spacing="10" alignment="TOP_LEFT">
-                        <Label text="1."
-                               minWidth="18"
-                               style="-fx-text-fill: #8fe4ff; -fx-font-size: 12px; -fx-font-weight: bold; -fx-font-family: 'Monospaced';"/>
-                        <Label text="Avancen juntos: todos los jugadores están unidos por un hilo virtual que limita qué tan lejos pueden separarse."
-                               wrapText="true"
-                               prefWidth="326"
-                               maxWidth="326"
-                               style="-fx-text-fill: #8fa1b6; -fx-font-size: 11.5px; -fx-font-family: 'Monospaced'; -fx-line-spacing: 2px;"/>
+                        <Label text="01" minWidth="20"
+                               style="-fx-text-fill: #00e5ff; -fx-font-size: 9.5px; -fx-font-weight: bold; -fx-font-family: 'Monospaced';"/>
+                        <Label text="Todos unidos por un hilo virtual — alejarse demasiado arrastra o frena al grupo."
+                               wrapText="true" maxWidth="350"
+                               style="-fx-text-fill: #E8F4F8; -fx-font-size: 11px; -fx-font-family: 'Monospaced';"/>
                     </HBox>
                     <HBox spacing="10" alignment="TOP_LEFT">
-                        <Label text="2."
-                               minWidth="18"
-                               style="-fx-text-fill: #8fe4ff; -fx-font-size: 12px; -fx-font-weight: bold; -fx-font-family: 'Monospaced';"/>
-                        <Label text="Coordinen el movimiento: si el hilo se tensa demasiado, arrastrará o frenará a los jugadores hasta volver a acercarlos."
-                               wrapText="true"
-                               prefWidth="326"
-                               maxWidth="326"
-                               style="-fx-text-fill: #8fa1b6; -fx-font-size: 11.5px; -fx-font-family: 'Monospaced'; -fx-line-spacing: 2px;"/>
+                        <Label text="02" minWidth="20"
+                               style="-fx-text-fill: #00e5ff; -fx-font-size: 9.5px; -fx-font-weight: bold; -fx-font-family: 'Monospaced';"/>
+                        <Label text="Si el hilo se tensa demasiado, arrastrará o frenará a los jugadores."
+                               wrapText="true" maxWidth="350"
+                               style="-fx-text-fill: #E8F4F8; -fx-font-size: 11px; -fx-font-family: 'Monospaced';"/>
                     </HBox>
                     <HBox spacing="10" alignment="TOP_LEFT">
-                        <Label text="3."
-                               minWidth="18"
-                               style="-fx-text-fill: #8fe4ff; -fx-font-size: 12px; -fx-font-weight: bold; -fx-font-family: 'Monospaced';"/>
-                        <Label text="Cuidado con el peligro: si cualquier jugador cae al vacío o toca un hazard, toda la sala se reinicia."
-                               wrapText="true"
-                               prefWidth="326"
-                               maxWidth="326"
-                               style="-fx-text-fill: #8fa1b6; -fx-font-size: 11.5px; -fx-font-family: 'Monospaced'; -fx-line-spacing: 2px;"/>
+                        <Label text="03" minWidth="20"
+                               style="-fx-text-fill: #00e5ff; -fx-font-size: 9.5px; -fx-font-weight: bold; -fx-font-family: 'Monospaced';"/>
+                        <Label text="Un jugador cae → toda la sala se reinicia."
+                               wrapText="true" maxWidth="350"
+                               style="-fx-text-fill: #E8F4F8; -fx-font-size: 11px; -fx-font-family: 'Monospaced';"/>
                     </HBox>
                     <HBox spacing="10" alignment="TOP_LEFT">
-                        <Label text="4."
-                               minWidth="18"
-                               style="-fx-text-fill: #8fe4ff; -fx-font-size: 12px; -fx-font-weight: bold; -fx-font-family: 'Monospaced';"/>
-                        <Label text="Todos deben escapar: el nivel solo termina cuando todos los jugadores conectados llegan a la salida."
-                               wrapText="true"
-                               prefWidth="326"
-                               maxWidth="326"
-                               style="-fx-text-fill: #8fa1b6; -fx-font-size: 11.5px; -fx-font-family: 'Monospaced'; -fx-line-spacing: 2px;"/>
+                        <Label text="04" minWidth="20"
+                               style="-fx-text-fill: #00e5ff; -fx-font-size: 9.5px; -fx-font-weight: bold; -fx-font-family: 'Monospaced';"/>
+                        <Label text="Todos deben llegar a la salida para completar el nivel."
+                               wrapText="true" maxWidth="350"
+                               style="-fx-text-fill: #E8F4F8; -fx-font-size: 11px; -fx-font-family: 'Monospaced';"/>
                     </HBox>
                     <HBox spacing="10" alignment="TOP_LEFT">
-                        <Label text="5."
-                               minWidth="18"
-                               style="-fx-text-fill: #8fe4ff; -fx-font-size: 12px; -fx-font-weight: bold; -fx-font-family: 'Monospaced';"/>
-                        <Label text="Usen el entorno a su favor: pueden empujar cajas y hasta subirse encima de otro jugador para alcanzar zonas altas."
-                               wrapText="true"
-                               prefWidth="326"
-                               maxWidth="326"
-                               style="-fx-text-fill: #8fa1b6; -fx-font-size: 11.5px; -fx-font-family: 'Monospaced'; -fx-line-spacing: 2px;"/>
+                        <Label text="05" minWidth="20"
+                               style="-fx-text-fill: #00e5ff; -fx-font-size: 9.5px; -fx-font-weight: bold; -fx-font-family: 'Monospaced';"/>
+                        <Label text="Usen cajas y apílense para alcanzar zonas altas."
+                               wrapText="true" maxWidth="350"
+                               style="-fx-text-fill: #E8F4F8; -fx-font-size: 11px; -fx-font-family: 'Monospaced';"/>
                     </HBox>
                 </VBox>
             </VBox>
 
-            <VBox spacing="18" prefWidth="470"
-                  style="-fx-background-color: rgba(14,21,32,0.96); -fx-background-radius: 28; -fx-border-radius: 28; -fx-border-color: #36506a; -fx-border-width: 2; -fx-padding: 28;">
-                <VBox spacing="8">
-                    <Label text="Nombre del jugador"
-                           style="-fx-text-fill: #aab8c8; -fx-font-size: 13px; -fx-font-family: 'Monospaced';"/>
-                    <TextField fx:id="playerNameField"
-                               promptText="Tu nombre"
-                               style="-fx-background-color: #121923; -fx-text-fill: #eef4fb; -fx-prompt-text-fill: #627286; -fx-border-color: #3b5874; -fx-border-radius: 12; -fx-background-radius: 12; -fx-padding: 10; -fx-font-size: 14px; -fx-font-family: 'Monospaced';"/>
+            <!-- ── Separador vertical ── -->
+            <Region minWidth="1" maxWidth="1" prefWidth="1"
+                    style="-fx-background-color: rgba(0,229,255,0.12); -fx-min-height: 420;"/>
+
+            <!-- ══ Panel derecho: formulario ══ -->
+            <VBox spacing="16" prefWidth="450"
+                  style="-fx-background-color: #0f1e2e;
+                         -fx-background-radius: 0 22 22 0;
+                         -fx-border-radius: 0 22 22 0;
+                         -fx-border-color: rgba(0,229,255,0.15);
+                         -fx-border-width: 1.5 1.5 1.5 0;
+                         -fx-padding: 30 28 30 22;">
+
+                <!-- Encabezado de sección -->
+                <VBox spacing="3">
+                    <Label text="// CONFIGURAR SESIÓN"
+                           style="-fx-text-fill: #00e5ff;
+                                  -fx-font-size: 9.5px;
+                                  -fx-font-weight: bold;
+                                  -fx-font-family: 'Monospaced';"/>
+                    <Label text="Nueva partida o unirse a una sala existente."
+                           style="-fx-text-fill: #7a9ab4;
+                                  -fx-font-size: 11px;
+                                  -fx-font-family: 'Monospaced';"/>
                 </VBox>
 
+                <!-- Nombre del jugador -->
+                <VBox spacing="5">
+                    <Label text="NOMBRE DEL JUGADOR"
+                           style="-fx-text-fill: #E8F4F8;
+                                  -fx-font-size: 9.5px;
+                                  -fx-font-weight: bold;
+                                  -fx-font-family: 'Monospaced';"/>
+                    <TextField fx:id="playerNameField"
+                               promptText="identificador de red"
+                               styleClass="field-std"/>
+                </VBox>
+
+                <!-- Modo host / cliente -->
                 <HBox spacing="24" alignment="CENTER_LEFT">
                     <RadioButton fx:id="createRadio"
-                                 text="Crear sala"
-                                 style="-fx-text-fill: #eef4fb; -fx-font-size: 14px; -fx-font-family: 'Monospaced';"
+                                 text="CREAR SALA"
+                                 styleClass="mode-radio"
                                  selected="true">
                         <toggleGroup>
                             <ToggleGroup fx:id="modeToggle"/>
                         </toggleGroup>
                     </RadioButton>
-
                     <RadioButton fx:id="joinRadio"
-                                 text="Unirse"
-                                 style="-fx-text-fill: #eef4fb; -fx-font-size: 14px; -fx-font-family: 'Monospaced';">
+                                 text="UNIRSE"
+                                 styleClass="mode-radio">
                         <toggleGroup>
                             <fx:reference source="modeToggle"/>
                         </toggleGroup>
                     </RadioButton>
                 </HBox>
 
-                <GridPane hgap="16" vgap="12">
+                <!-- Campos de red -->
+                <GridPane hgap="12" vgap="9">
                     <columnConstraints>
-                        <ColumnConstraints minWidth="140" prefWidth="150"/>
-                        <ColumnConstraints minWidth="220" prefWidth="250"/>
+                        <ColumnConstraints minWidth="115" prefWidth="125"/>
+                        <ColumnConstraints minWidth="200" prefWidth="260" hgrow="ALWAYS"/>
                     </columnConstraints>
 
-                    <Label text="IP local"
-                           style="-fx-text-fill: #aab8c8; -fx-font-family: 'Monospaced';"
-                           GridPane.rowIndex="0"
-                           GridPane.columnIndex="0"/>
-                    <TextField fx:id="localIpField"
-                               text="0.0.0.0"
-                               style="-fx-background-color: #121923; -fx-text-fill: #eef4fb; -fx-border-color: #314f69; -fx-border-radius: 10; -fx-background-radius: 10; -fx-padding: 8; -fx-font-family: 'Monospaced';"
-                               GridPane.rowIndex="0"
-                               GridPane.columnIndex="1"/>
+                    <Label text="IP LOCAL"
+                           style="-fx-text-fill: #E8F4F8; -fx-font-size: 9.5px; -fx-font-weight: bold; -fx-font-family: 'Monospaced';"
+                           GridPane.rowIndex="0" GridPane.columnIndex="0"/>
+                    <TextField fx:id="localIpField" text="0.0.0.0" styleClass="field-std"
+                               GridPane.rowIndex="0" GridPane.columnIndex="1"/>
 
-                    <Label text="Puerto local"
-                           style="-fx-text-fill: #aab8c8; -fx-font-family: 'Monospaced';"
-                           GridPane.rowIndex="1"
-                           GridPane.columnIndex="0"/>
-                    <TextField fx:id="localPortField"
-                               text="5000"
-                               style="-fx-background-color: #121923; -fx-text-fill: #eef4fb; -fx-border-color: #314f69; -fx-border-radius: 10; -fx-background-radius: 10; -fx-padding: 8; -fx-font-family: 'Monospaced';"
-                               GridPane.rowIndex="1"
-                               GridPane.columnIndex="1"/>
+                    <Label text="PUERTO LOCAL"
+                           style="-fx-text-fill: #E8F4F8; -fx-font-size: 9.5px; -fx-font-weight: bold; -fx-font-family: 'Monospaced';"
+                           GridPane.rowIndex="1" GridPane.columnIndex="0"/>
+                    <TextField fx:id="localPortField" text="5000" styleClass="field-std"
+                               GridPane.rowIndex="1" GridPane.columnIndex="1"/>
 
-                    <Label text="IP host"
-                           style="-fx-text-fill: #aab8c8; -fx-font-family: 'Monospaced';"
-                           GridPane.rowIndex="2"
-                           GridPane.columnIndex="0"/>
-                    <TextField fx:id="hostIpField"
-                               promptText="192.168.x.x"
-                               style="-fx-background-color: #121923; -fx-text-fill: #eef4fb; -fx-prompt-text-fill: #627286; -fx-border-color: #314f69; -fx-border-radius: 10; -fx-background-radius: 10; -fx-padding: 8; -fx-font-family: 'Monospaced';"
-                               GridPane.rowIndex="2"
-                               GridPane.columnIndex="1"/>
+                    <Label text="IP HOST"
+                           style="-fx-text-fill: #E8F4F8; -fx-font-size: 9.5px; -fx-font-weight: bold; -fx-font-family: 'Monospaced';"
+                           GridPane.rowIndex="2" GridPane.columnIndex="0"/>
+                    <TextField fx:id="hostIpField" promptText="192.168.x.x" styleClass="field-std"
+                               GridPane.rowIndex="2" GridPane.columnIndex="1"/>
 
-                    <Label text="Puerto host"
-                           style="-fx-text-fill: #aab8c8; -fx-font-family: 'Monospaced';"
-                           GridPane.rowIndex="3"
-                           GridPane.columnIndex="0"/>
-                    <TextField fx:id="hostPortField"
-                               text="5000"
-                               style="-fx-background-color: #121923; -fx-text-fill: #eef4fb; -fx-border-color: #314f69; -fx-border-radius: 10; -fx-background-radius: 10; -fx-padding: 8; -fx-font-family: 'Monospaced';"
-                               GridPane.rowIndex="3"
-                               GridPane.columnIndex="1"/>
+                    <Label text="PUERTO HOST"
+                           style="-fx-text-fill: #E8F4F8; -fx-font-size: 9.5px; -fx-font-weight: bold; -fx-font-family: 'Monospaced';"
+                           GridPane.rowIndex="3" GridPane.columnIndex="0"/>
+                    <TextField fx:id="hostPortField" text="5000" styleClass="field-std"
+                               GridPane.rowIndex="3" GridPane.columnIndex="1"/>
                 </GridPane>
 
+                <!-- Jugadores esperados -->
                 <HBox fx:id="expectedPlayersBox" spacing="12" alignment="CENTER_LEFT"
-                      style="-fx-background-color: #121923; -fx-background-radius: 16; -fx-border-radius: 16; -fx-border-color: rgba(57,79,104,0.9); -fx-border-width: 1.2; -fx-padding: 12;">
-                    <Label text="Jugadores esperados"
-                           style="-fx-text-fill: #aab8c8; -fx-font-size: 13px; -fx-font-family: 'Monospaced';"/>
+                      style="-fx-background-color: rgba(5,11,19,0.92);
+                             -fx-background-radius: 10;
+                             -fx-border-radius: 10;
+                             -fx-border-color: rgba(0,229,255,0.10);
+                             -fx-border-width: 1;
+                             -fx-padding: 10 14;">
+                    <Label text="JUGADORES ESPERADOS"
+                           style="-fx-text-fill: #E8F4F8;
+                                  -fx-font-size: 9.5px;
+                                  -fx-font-weight: bold;
+                                  -fx-font-family: 'Monospaced';"/>
                     <ChoiceBox fx:id="expectedPlayersChoice"
-                               style="-fx-background-color: #1b2532; -fx-border-color: #314f69; -fx-border-radius: 10; -fx-background-radius: 10; -fx-font-family: 'Monospaced';"/>
+                               style="-fx-background-color: #080f18;
+                                      -fx-border-color: #1a3450;
+                                      -fx-border-radius: 8;
+                                      -fx-background-radius: 8;
+                                      -fx-font-family: 'Monospaced';
+                                      -fx-font-size: 13px;"/>
                 </HBox>
 
+                <!-- Botón principal -->
                 <Button text="ABRIR LOBBY"
-                        fx:id="openLobbyBtn"
                         onAction="#onAbrirLobby"
-                        style="-fx-background-color: linear-gradient(to bottom, #8fe0ff, #67c8f0); -fx-text-fill: #0d1826; -fx-font-weight: bold; -fx-font-size: 16px; -fx-font-family: 'Monospaced'; -fx-padding: 14 28; -fx-background-radius: 16; -fx-cursor: hand;"
-                        maxWidth="300"/>
+                        styleClass="lobby-btn"
+                        maxWidth="Infinity"/>
 
+                <!-- Error de validación -->
                 <Label fx:id="errorLabel"
                        visible="false"
                        wrapText="true"
-                       style="-fx-text-fill: #ff8899; -fx-font-size: 12px; -fx-font-family: 'Monospaced';"/>
+                       style="-fx-text-fill: #e05555;
+                              -fx-font-size: 11px;
+                              -fx-font-family: 'Monospaced';
+                              -fx-background-color: rgba(220,40,40,0.07);
+                              -fx-background-radius: 8;
+                              -fx-padding: 6 10;
+                              -fx-border-color: rgba(220,40,40,0.22);
+                              -fx-border-radius: 8;
+                              -fx-border-width: 1;"/>
             </VBox>
         </HBox>
     </center>
